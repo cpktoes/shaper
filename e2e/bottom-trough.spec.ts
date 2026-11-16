@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
@@ -11,6 +11,8 @@ import { goToScreen } from "./helpers/screens";
  * A double concave's trough runs three ways (quick 261115-mc1): Parallel, Centered, By hand. Read off the page, never
  * typed: DATA's Tail trough column is the board's own answer, and every figure is parsed back from the words the screen
  * wrote. A figure and its unit are held together by a no-break space, so it is folded to a space before parsing.
+ *
+ * This spec opens one board and reloads it on purpose, so it does not forget the open board on every load.
  */
 
 /** One sixteenth of an inch, in millimetres: DATA writes a mark to the nearest one, so that is how close a check is. */
@@ -40,7 +42,7 @@ async function openBottom(page: Page) {
   await goToScreen(page, "BOTTOM");
 }
 
-/** Picks a name from a section's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
+/** Picks a name from the TAIL card's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
 async function pickCut(page: Page, name: string) {
   await showBottomSection(page, "tail");
   const echo = page.locator('[data-bottom-card="tail"] [data-bottom-cut-echo]');
@@ -89,41 +91,155 @@ async function readTailMarks(page: Page) {
   }));
 }
 
+/** A label line inside the TAIL card, by the words it opens with. */
+const labelLine = (page: Page, words: string) => page.locator('[data-bottom-card="tail"]').getByText(new RegExp(`^${words} — `));
+
+/** The figure a label line carries: `Trough at Start — 4" from the stringer` reads 4" (in millimetres). */
+async function figureOf(line: Locator): Promise<number> {
+  const text = fold(await line.textContent());
+  const found = /— (.+?) from the (?:stringer|tail)$/.exec(text);
+  if (!found) throw new Error(`no figure in "${text}"`);
+  const value = inches(found[1]);
+  if (value === null) throw new Error(`cannot read "${found[1]}"`);
+  return value;
+}
+
+/** The trough's drawn line, as the page draws it (the dotted one). */
+const troughPath = (page: Page) => page.locator('[data-bottom-pencil="trough"]').first().getAttribute("d");
+
+/** Moves a slider by the keyboard, one 1/16" a press, until its label line reads the figure asked for. */
+async function setBySteps(page: Page, sliderName: string, line: Locator, targetMm: number) {
+  await showBottomSection(page, "tail");
+  const now = await figureOf(line);
+  const steps = Math.round((targetMm - now) / SIXTEENTH);
+  const slider = page.getByRole("slider", { name: sliderName, exact: true });
+  await slider.focus();
+  for (let i = 0; i < Math.abs(steps); i++) await page.keyboard.press(steps > 0 ? "ArrowRight" : "ArrowLeft");
+  await expect.poll(() => figureOf(line), { timeout: 20_000 }).toBeCloseTo(targetMm, 0);
+}
+
+/** A picture of the page with the Trough menu in view, for the founder to look at. */
+async function takePicture(page: Page, testInfo: TestInfo, name: string) {
+  await showBottomSection(page, "tail");
+  await page.getByRole("combobox", { name: "Tail Trough", exact: true }).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: testInfo.outputPath(`${name}-${testInfo.project.name}.png`) });
+}
+
 test.describe("a double concave's trough: Parallel, Centered, By hand", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "the tracer runs on a computer");
+    test.skip(testInfo.project.name === "iphone", "one phone is the brief's ask");
     await dismissStrips(page);
   });
 
-  test("Centered: the Shortboard's Double Concave Exit puts the trough halfway between the flat and the edge, further out toward Start", async ({ page }) => {
-    test.setTimeout(240_000);
+  test("the Shortboard's Double Concave Exit through Parallel, Centered and By hand, and a reload keeps By hand", async ({ page }, testInfo) => {
+    test.setTimeout(420_000);
     await openBottom(page);
     await pickCut(page, "Double Concave Exit");
     await bottomFloorScanSettled(page);
+    const menu = () => page.getByRole("combobox", { name: "Tail Trough", exact: true });
+    const toViewer = async () => {
+      await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+      await showBottomSection(page, "tail");
+    };
 
-    // Parallel (where every double opens): one distance off the stringer all along the cut.
-    const trough = page.getByRole("slider", { name: "Tail Trough At", exact: true });
-    await expect(trough).toHaveCount(1);
+    // 1. Parallel (where every double opens): one distance off the stringer all along the cut.
+    await showBottomSection(page, "tail");
+    await expect(page.getByRole("slider", { name: "Tail Trough At", exact: true })).toHaveCount(1);
+    const troughAt = await figureOf(labelLine(page, "Trough At"));
+    const parallelPath = await troughPath(page);
+    expect(parallelPath).toBeTruthy();
+    await takePicture(page, testInfo, "trough-parallel");
     const parallel = (await readTailMarks(page)).filter((r) => r.trough !== null);
     expect(parallel.length).toBeGreaterThanOrEqual(3);
     expect(new Set(parallel.map((r) => r.troughText)).size).toBe(1);
+    await toViewer();
 
-    // Centered: Trough At has nothing to do, so it leaves; the trough follows the cut's own width.
-    await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+    // 2. Centered: Trough At leaves; the trough follows the cut's own width, further out toward Start.
     await pickTrough(page, "Centered");
     await expect(page.getByRole("slider", { name: "Tail Trough At", exact: true })).toHaveCount(0);
     await expect(page.locator("[data-bottom-trough-note]").first()).toHaveText(BOTTOM_COPY.troughRunNotes.centered);
+    expect(await troughPath(page)).not.toBe(parallelPath);
+    await takePicture(page, testInfo, "trough-centered");
     const centered = (await readTailMarks(page)).filter((r) => r.trough !== null);
     expect(centered.length).toBe(parallel.length);
     expect(new Set(centered.map((r) => r.troughText)).size).toBeGreaterThan(1);
     for (const row of centered) {
       expect(row.flat, `row ${row.station} has a flat`).not.toBeNull();
       expect(row.edge, `row ${row.station} has an edge`).not.toBeNull();
-      const middle = (row.flat! + row.edge!) / 2;
-      expect(Math.abs(row.trough! - middle), `row ${row.station}`).toBeLessThanOrEqual(SIXTEENTH);
+      expect(Math.abs(row.trough! - (row.flat! + row.edge!) / 2), `row ${row.station}`).toBeLessThanOrEqual(SIXTEENTH);
     }
-    // Further forward (a longer way from the tail) the trough stands further off the stringer.
-    const sorted = [...centered].sort((a, b) => a.station - b.station);
-    expect(sorted[sorted.length - 1].trough!).toBeGreaterThan(sorted[0].trough!);
+    const byStation = [...centered].sort((a, b) => a.station - b.station);
+    expect(byStation[byStation.length - 1].trough!).toBeGreaterThan(byStation[0].trough!);
+    await toViewer();
+
+    // 3. By hand: both ends open at Trough At, so nothing jumps; then the two sliders move it.
+    await pickTrough(page, "By hand");
+    await expect(page.getByRole("slider", { name: "Tail Trough At", exact: true })).toHaveCount(0);
+    await expect(page.locator("[data-bottom-trough-note]").first()).toHaveText(BOTTOM_COPY.troughRunNotes.hand);
+    const startLine = labelLine(page, "Trough at Start");
+    const endLine = labelLine(page, "Trough at End");
+    expect(await figureOf(startLine)).toBe(troughAt);
+    expect(await figureOf(endLine)).toBe(troughAt);
+    expect(await troughPath(page)).toBe(parallelPath);
+    const unmoved = (await readTailMarks(page)).filter((r) => r.trough !== null);
+    expect(unmoved.map((r) => r.troughText)).toEqual(parallel.map((r) => r.troughText));
+    await toViewer();
+
+    // The cut's own Start and End, read off the panel's station rows.
+    const station = async (word: string) => {
+      const text = fold(await labelLine(page, word).textContent());
+      const found = /— (.+?) from the tail$/.exec(text);
+      return inches(found![1])!;
+    };
+    const cutStart = await station("Start");
+    const cutEnd = await station("End");
+    expect(cutStart).toBeGreaterThan(cutEnd);
+
+    /** Each filled trough cell sits on the straight line between the two figures, within one sixteenth. */
+    const expectStraightLine = async (atStart: number, atEnd: number, what: string) => {
+      const rows = (await readTailMarks(page)).filter((r) => r.trough !== null);
+      expect(rows.length, what).toBeGreaterThanOrEqual(3);
+      const line = (s: number) => {
+        const clamped = Math.min(cutStart, Math.max(cutEnd, s));
+        return atEnd + ((atStart - atEnd) * (clamped - cutEnd)) / (cutStart - cutEnd);
+      };
+      for (const row of rows) expect(Math.abs(row.trough! - line(row.station)), `${what}: row ${row.station}`).toBeLessThanOrEqual(SIXTEENTH);
+      return rows;
+    };
+
+    // 4" at the Start, 1 1/2" at the End: the cells fall toward the tail.
+    await setBySteps(page, "Tail Trough at Start", startLine, inchesToMm(4));
+    await setBySteps(page, "Tail Trough at End", endLine, inchesToMm(1.5));
+    expect(await troughPath(page)).not.toBe(parallelPath);
+    await takePicture(page, testInfo, "trough-by-hand");
+    const falling = await expectStraightLine(inchesToMm(4), inchesToMm(1.5), "4 to 1 1/2");
+    const fallingSorted = [...falling].sort((a, b) => a.station - b.station);
+    expect(fallingSorted[fallingSorted.length - 1].trough!).toBeGreaterThan(fallingSorted[0].trough!);
+    if (testInfo.project.name === "desktop") {
+      // the layout marks sit below the depths table: bring the Tail trough column into the picture
+      await page.locator("[data-bottom-marks]").scrollIntoViewIfNeeded();
+      await page.locator("[data-bottom-marks] tbody tr").first().scrollIntoViewIfNeeded();
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: testInfo.outputPath("trough-by-hand-data-desktop.png") });
+    }
+    await toViewer();
+
+    // The other way round: 1 1/2" at the Start, 3 1/2" at the End: the cells rise toward the tail.
+    await setBySteps(page, "Tail Trough at Start", startLine, inchesToMm(1.5));
+    await setBySteps(page, "Tail Trough at End", endLine, inchesToMm(3.5));
+    const rising = await expectStraightLine(inchesToMm(1.5), inchesToMm(3.5), "1 1/2 to 3 1/2");
+    const risingSorted = [...rising].sort((a, b) => a.station - b.station);
+    expect(risingSorted[0].trough!).toBeGreaterThan(risingSorted[risingSorted.length - 1].trough!);
+    await toViewer();
+
+    // 4. The rule and both figures survive a reload (the kept open board reads the same schema as a save).
+    await expect(async () => {
+      await page.reload();
+      await showBottomSection(page, "tail");
+      await expect(menu()).toContainText("By hand", { timeout: 5_000 });
+    }).toPass({ timeout: 60_000 });
+    expect(await figureOf(labelLine(page, "Trough at Start"))).toBeCloseTo(inchesToMm(1.5), 0);
+    expect(await figureOf(labelLine(page, "Trough at End"))).toBeCloseTo(inchesToMm(3.5), 0);
   });
 });
