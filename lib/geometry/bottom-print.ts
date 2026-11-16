@@ -119,7 +119,7 @@ function cutLine(section: BottomSectionKey, cut: ResolvedCut, board: BottomBoard
     }
     return `${lead}flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`;
   }
-  // A vee or a belly lifts the rail; the Tri-Plane's flat panel is the one across mark it has.
+  // A vee or a belly lifts the rail; the flat panel (the Tri-Plane's, or a belly's) is the one across mark it has.
   const panel = cut.offStringer > 0 ? `; panel ${formatMark(cut.offStringer, system)} off the stringer` : "";
   return `${head} ${depth} rail lift, ${where}${panel}.`;
 }

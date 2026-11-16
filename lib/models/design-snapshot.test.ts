@@ -1590,3 +1590,29 @@ describe("a double concave's trough rule rides on the cut, optional and forgivin
     }
   });
 });
+
+describe("a belly's Off Stringer rides on the cut with no schema change (quick 261116-jqz, D-02)", () => {
+  const board = designBottomBoard(
+    FIXTURES[0].outline,
+    buildOutline(FIXTURES[0].outline),
+    designSideProfile(FIXTURES[0], LIVE_DESIGN_RULES),
+    designFinPlacement(FIXTURES[0]),
+  );
+
+  it("a centre belly at 3\" and a nose belly at 2\" round-trip key for key", () => {
+    const bottom: BoardBottom = {
+      ...DEFAULT_BOTTOM,
+      nose: { ...startingCut("nose", "Rolled Belly Entry", board), offStringer: mm(inchesToMm(2)) },
+      center: { ...startingCut("center", "Continuous Belly / Rolled Mid", board), offStringer: mm(inchesToMm(3)) },
+    };
+    const opened = roundTrip({ ...FIXTURES[0], bottom }).bottom!;
+    expect(opened).toEqual(bottom);
+    expect(opened.center.offStringer).toBe(bottom.center.offStringer);
+    expect(opened.nose.offStringer).toBe(bottom.nose.offStringer);
+  });
+
+  it("a belly saved at 0\" opens at 0\"", () => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, center: startingCut("center", "Continuous Belly / Rolled Mid", board) };
+    expect(roundTrip({ ...FIXTURES[0], bottom }).bottom!.center.offStringer).toBe(0);
+  });
+});
