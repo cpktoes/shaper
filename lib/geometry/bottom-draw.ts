@@ -280,7 +280,7 @@ export function polylinesPathData(runs: readonly (readonly BoardXY[])[], map: Bo
 /* ============ the pencil lines (D-12) ============ */
 
 /** What a pencil line is: a single's or double's edge (Off Rail), a double's flat (Off Stringer) and its trough, a
- * Tri-Plane's (or any vee's) panel line, a channel wall, or a channel set's flat edge. */
+ * Tri-Plane's (or any vee's) or a belly's panel line, a channel wall, or a channel set's flat edge. */
 export type PencilKind = "edge" | "flat" | "trough" | "panel" | "wall" | "flatEdge";
 
 /** One line a shaper would rule on the blank, both sides, in board millimetres. */
@@ -365,8 +365,8 @@ function channelPencilLines(ch: ResolvedChannels, board: BottomBoard, resolved: 
 
 /**
  * The lines a shaper would rule (D-12; the sketch's pencil lines, template.html 641–658), each from its own cut's
- * Start to End: a single's edge; a double's flat, trough and edge; a vee's panel line where it has a flat panel (the
- * Tri-Plane); every channel wall and a channel set's flat edge, each from its own channel's start. In shop order;
+ * Start to End: a single's edge; a double's flat, trough and edge; a vee's or belly's panel line where it has a flat
+ * panel (the Tri-Plane's, or a belly's Off Stringer); every channel wall and a channel set's flat edge, each from its own channel's start. In shop order;
  * `live` marks the cut being edited. A flat bottom has none.
  */
 export function bottomPencilLines(resolved: ResolvedBottom, board: BottomBoard, live: BottomCutKey | null): PencilLine[] {

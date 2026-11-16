@@ -115,7 +115,8 @@ type CutRow = MarkField | StationField | "smoothness" | "troughRun";
 
 /**
  * Which rows a cut shows, in D-04's order (UI-SPEC § The side panel, the "Shown for" column): Off Rail on a single or a
- * double (the Spiral Vee is one), Off Stringer on a double and the Tri-Plane, Trough At on a double, then Start, Deepest
+ * double (the Spiral Vee is one), Off Stringer on a double, the Tri-Plane and a belly (a belly's flat panel, quick
+ * 261116-jqz), Trough At on a double, then Start, Deepest
  * At, End and Depth on every cut but a flat (a vee's or belly's Depth is its lift at the rail, still labelled Depth),
  * Vee Lift on the Spiral Vee, and Smoothness. A flat shows none. Which rows to draw is the screen's question; every
  * number in them is the maths'.
@@ -124,7 +125,7 @@ function cutRows(cut: Pick<ResolvedCut, "kind" | "name" | "spiral" | "troughRun"
   if (cut.kind === "flat") return [];
   const rows: CutRow[] = [];
   if (cut.kind === "single" || cut.kind === "double") rows.push("offRail");
-  if (cut.kind === "double" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
+  if (cut.kind === "double" || cut.kind === "belly" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
   // A double's Trough menu (quick 261115-mc1), then the distances its rule reads: Trough At under Parallel, Trough at
   // Start and Trough at End under By hand; Centered has no distance to set.
   if (cut.kind === "double") rows.push("troughRun");

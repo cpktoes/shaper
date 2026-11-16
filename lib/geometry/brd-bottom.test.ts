@@ -33,6 +33,8 @@ import {
   BRD_BOTTOM_BELLY_SHARE,
   BRD_BOTTOM_BLEND_MAX_IN,
   BRD_BOTTOM_FLAT_MM,
+  BRD_BOTTOM_TRI_PLANE_MM,
+  BRD_BOTTOM_EXTRA_CUT_MM,
   BRD_BOTTOM_WINDOW,
   brdBottomBlends,
   brdBottomFromPicks,
@@ -40,6 +42,7 @@ import {
   brdBottomSections,
   brdFittedBottomBoard,
   brdStringerLift,
+  chooseBrdBottom,
   fitBottomToBrd,
   measureBrdBottom,
   readBrdBottom,
@@ -532,11 +535,19 @@ describe("round trips: a board with a known bottom, written, read back and fitte
 
   const depthSteps = (spec: BottomCutSpec) => (cutKind(spec.name) === "flat" ? 0 : Math.round(mmToInches(spec.depth) / BOTTOM_MARK_STEP_IN));
 
+  /**
+   * The kind a written cut is expected to come back as. A written Tri-Plane Hull Center at its starting 1/8" is a near tie
+   * with a Continuous Belly with a flat panel (the belly scores 0.07 mm closer, 0.02 mm and 0.20 mm farther in the three cases
+   * that write one), and the Tri-Plane is the rarest bottom: it is kept only when 1 mm closer (D-05, quick 261116-jqz), so
+   * every near tie comes back as the belly, at the same depth and no further from the file than the bottom written.
+   */
+  const comesBackAs = (name: BottomCutName) => (name === "Tri-Plane Hull Center" ? "belly" : cutKind(name));
+
   function check(c: Case, source: ReturnType<typeof builder>, strictMoves: boolean) {
     const wanted = bottomOf(c, source.board);
     const { found, board, read } = fitText(source.write(wanted));
     for (const key of ["nose", "center", "tail"] as const) {
-      expect(cutKind(found.bottom[key].name), `${c.name}: ${key} kind`).toBe(cutKind(wanted[key].name));
+      expect(cutKind(found.bottom[key].name), `${c.name}: ${key} kind`).toBe(comesBackAs(wanted[key].name));
       expect(depthSteps(found.bottom[key]), `${c.name}: ${key} depth`).toBe(depthSteps(wanted[key]));
     }
     // The found bottom is no more than 0.2 mm further from the file than the bottom that was written.
@@ -585,4 +596,102 @@ describe("the stringer lift", () => {
     expect(lift(deepest)).toBeCloseTo(Math.min(inchesToMm(4 / 16), board.thicknessAt(deepest) - inchesToMm(1 / 4)), 6);
     expect(lift(mm(0))).toBe(0);
   });
+});
+
+describe("the Tri-Plane Hull Center is reached for last, and a belly carries a flat panel (quick 261116-jqz, D-04, D-05)", () => {
+  const I = inchesToMm;
+  type Specs = Record<BottomSectionKey, BottomCutSpec>;
+  const board = SHORT.board;
+  const specsOf = (center: BottomCutName): Specs => ({
+    nose: startingCut("nose", "Flat Entry", board),
+    center: startingCut("center", center, board),
+    tail: startingCut("tail", "Flat Exit", board),
+  });
+  const candidate = (center: BottomCutName, value: number) => ({ specs: specsOf(center), value });
+
+  describe("chooseBrdBottom", () => {
+    const TRI = "Tri-Plane Hull Center" as const;
+    const BELLY = "Continuous Belly / Rolled Mid" as const;
+
+    it("a Tri-Plane just under the margin ahead loses; at exactly the margin it wins", () => {
+      const belly = candidate(BELLY, 2);
+      const under = candidate(TRI, 2 - (BRD_BOTTOM_TRI_PLANE_MM - 0.01));
+      expect(chooseBrdBottom([under, belly], under)).toBe(belly);
+      const at = candidate(TRI, 2 - BRD_BOTTOM_TRI_PLANE_MM);
+      expect(chooseBrdBottom([at, belly], belly)).toBe(at);
+    });
+
+    it("a Tri-Plane seed with another candidate a little behind loses: the seed's stickiness never saves it", () => {
+      const seed = candidate(TRI, 2);
+      const other = candidate(BELLY, 2 + 0.1);
+      expect(chooseBrdBottom([seed, other], seed)).toBe(other);
+    });
+
+    it("a pool of Tri-Planes alone keeps the closest", () => {
+      const a = candidate(TRI, 3);
+      const b = candidate(TRI, 2);
+      expect(chooseBrdBottom([a, b], a)).toBe(b);
+    });
+
+    it("with no Tri-Plane in the pool it is today's rule: the seed when it is near and among the fewest cuts, else the fewest cuts' closest", () => {
+      const seed = candidate("Deep Single Concave", 2);
+      const closer = candidate("Shallow Single Concave", 2 - BRD_BOTTOM_EXTRA_CUT_MM / 2);
+      expect(chooseBrdBottom([seed, closer], seed)).toBe(seed);
+      const muchCloser = candidate("Shallow Single Concave", 2 - BRD_BOTTOM_EXTRA_CUT_MM - 0.5);
+      expect(chooseBrdBottom([seed, muchCloser], seed)).toBe(muchCloser);
+      const twoCuts = { specs: { ...specsOf("Deep Single Concave"), tail: startingCut("tail", "Panel Vee", board) }, value: 1.9 };
+      expect(chooseBrdBottom([seed, twoCuts], seed)).toBe(seed);
+    });
+  });
+
+  /** Sections exactly `bottom`'s at 40 stations, less than 6" apart so the fit adds no blends: the file's bottom IS it. */
+  function exactSections(bottom: BoardBottom, b: BottomBoard): BrdSectionLine[] {
+    const resolved = resolveBottom(bottom, b);
+    return Array.from({ length: 40 }, (_, k) => 0.03 + (0.94 * k) / 39).map((share) => {
+      const station = mm(share * b.length);
+      const reach = b.railAt(station) / BRD_BOTTOM_WINDOW;
+      const at0 = sectionsFoamOff(resolved, b, station, mm(0));
+      const run = Array.from({ length: 61 }, (_, k): P2 => {
+        const x = (reach * k) / 60;
+        return [x, sectionsFoamOff(resolved, b, station, mm(x)) - at0];
+      });
+      return { station, points: [...run, [reach, run[60][1] + 20], [0, run[60][1] + 40]] };
+    });
+  }
+
+  it.each([["the Shortboard", SHORT], ["the Mid-length", MID]] as const)(
+    "%s: a 3/8\" Continuous Belly with a 1 1/2\" panel comes back as a belly with that panel, to within 1/16\", and exact",
+    (_name, source) => {
+      const wanted = withCuts({
+        center: { ...startingCut("center", "Continuous Belly / Rolled Mid", source.board), depth: I(3 / 8), offStringer: I(1.5) },
+      });
+      const found = fitBottomToBrd(exactSections(wanted, source.board), source.board)!;
+      expect(cutKind(found.bottom.center.name)).toBe("belly");
+      expect(Math.abs(found.bottom.center.offStringer - wanted.center.offStringer)).toBeLessThanOrEqual(I(1 / 16) + 1e-9);
+      expect(found.closeness.largest).toBeLessThan(0.1);
+    },
+    LONG,
+  );
+
+  it("a Tri-Plane at its starting 1/8\", read from exact sections, comes back as a belly with a panel: the near tie goes to the belly", () => {
+    const wanted = withCuts({ center: startingCut("center", "Tri-Plane Hull Center", board) });
+    const found = fitBottomToBrd(exactSections(wanted, board), board)!;
+    expect(found.bottom.center.name).not.toBe("Tri-Plane Hull Center");
+    expect(cutKind(found.bottom.center.name)).toBe("belly");
+    expect(found.bottom.center.offStringer).toBeGreaterThan(0);
+  }, LONG);
+
+  it.each([
+    ["the Shortboard alone", SHORT, undefined],
+    ["the Mid-length alone", MID, undefined],
+    ["the Shortboard with a Panel Vee", SHORT, "Panel Vee"],
+    ["the Mid-length with a Panel Vee", MID, "Panel Vee"],
+  ] as const)("%s: a 1/2\" Tri-Plane written to a file and read back is still a Tri-Plane (rare, not gone)", (_name, source, tail) => {
+    const bottom = withCuts({
+      center: { ...startingCut("center", "Tri-Plane Hull Center", source.board), depth: I(1 / 2) },
+      ...(tail ? { tail: startingCut("tail", tail, source.board) } : {}),
+    });
+    const { found } = fitText(source.write(bottom));
+    expect(found.bottom.center.name).toBe("Tri-Plane Hull Center");
+  }, LONG);
 });

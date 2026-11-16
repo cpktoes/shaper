@@ -659,6 +659,22 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
       });
     }
 
+    it("the Across row names a belly's Off Stringer when it is over 0\", and reads \u2014 at 0\" as before (quick 261116-jqz)", () => {
+      const withBelly = (offStringer: number) => {
+        const bottom = concave.bottom!;
+        const center = { ...startingCut("center", "Continuous Belly / Rolled Mid", brdFittedBottomBoard(concave.fit)), offStringer: inchesToMm(offStringer) };
+        return { ...concave, bottom: { ...bottom, bottom: { ...bottom.bottom, center } } };
+      };
+      for (const system of ["imperial", "metric"] as const) {
+        const panelled = brdFitSheet(withBelly(3), "Belly.brd", system);
+        const plain = brdFitSheet(withBelly(0), "Belly.brd", system);
+        if (!panelled.bottom.read || !plain.bottom.read) throw new Error("expected a read bottom");
+        const across = (block: typeof panelled.bottom & { read: true }) => block.rows.find((r) => r.key === "across")!.cells[1];
+        expect(across(panelled.bottom)).toBe(`Off Stringer ${formatMark(inchesToMm(3), system)}`);
+        expect(across(plain.bottom)).toBe("\u2014");
+      }
+    });
+
     it("has a Bottom HOW CLOSE line with the section and how far out, and the Bottom control line", () => {
       const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
       const c = concave.bottom!.closeness;

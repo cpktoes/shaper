@@ -1415,12 +1415,14 @@ function channelMarksOf(ch: ResolvedChannels, board: BottomBoard, rule: BottomWi
 
 const markColumn = (section: BottomSectionKey, mark: BottomMarkColumn["mark"]): BottomMarkColumn => ({ key: `${section}:${mark}`, section, mark });
 
-/** The columns a cut can put in the layout table (the sketch's `markColumns`). */
+/** The columns a cut can put in the layout table (the sketch's `markColumns`): a single's edge, a double's flat,
+ * trough and edge, and the flat panel of a vee or a belly once Off Stringer is over 0. */
 function markColumnsOf(cut: ResolvedCut): BottomMarkColumn[] {
   if (cut.kind === "flat" || cut.depth <= 0) return [];
   if (cut.kind === "single") return [markColumn(cut.section, "edge")];
   if (cut.kind === "double") return [markColumn(cut.section, "flat"), markColumn(cut.section, "trough"), markColumn(cut.section, "edge")];
-  if (cut.kind === "vee" && cut.offStringer > BOTTOM_DATA_EDGE) return [markColumn(cut.section, "flat")];
+  // A vee's panel (the Tri-Plane's) and a belly's: the flat the cut leaves either side of the stringer.
+  if ((cut.kind === "vee" || cut.kind === "belly") && cut.offStringer > BOTTOM_DATA_EDGE) return [markColumn(cut.section, "flat")];
   return [];
 }
 
@@ -1442,7 +1444,9 @@ function marksOf(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: 
     if (C < W) out.push({ key: key("edge"), y: C });
     return out.filter((m) => m.y > BOTTOM_DATA_EDGE);
   }
-  if (cut.kind === "vee" && cut.offStringer > BOTTOM_DATA_EDGE && cut.offStringer < W) return [{ key: key("flat"), y: cut.offStringer }];
+  if ((cut.kind === "vee" || cut.kind === "belly") && cut.offStringer > BOTTOM_DATA_EDGE && cut.offStringer < W) {
+    return [{ key: key("flat"), y: cut.offStringer }];
+  }
   return [];
 }
 

@@ -185,7 +185,7 @@ function cutFields(cut: ResolvedCut): (MarkField | StationField | "smoothness")[
   if (cut.kind === "flat") return [];
   const rows: (MarkField | StationField | "smoothness")[] = [];
   if (cut.kind === "single" || cut.kind === "double") rows.push("offRail");
-  if (cut.kind === "double" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
+  if (cut.kind === "double" || cut.kind === "belly" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
   if (cut.kind === "double") rows.push("troughAt");
   rows.push(...STATION_FIELDS, "depth");
   if (cut.spiral) rows.push("veeLift");

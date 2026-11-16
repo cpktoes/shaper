@@ -24,7 +24,7 @@ const SECTION_WORD: Record<BottomSectionKey, string> = { nose: "Nose", center: "
 
 /**
  * Each name's rows, in D-04's order (UI-SPEC § The side panel, the "Shown for" column): a single Off Rail; a double
- * (the Spiral Vee is one) Off Rail, Off Stringer, Trough At; the Tri-Plane Off Stringer; then every cut Start, Deepest
+ * (the Spiral Vee is one) Off Rail, Off Stringer, Trough At; the Tri-Plane and each belly Off Stringer; then every cut Start, Deepest
  * At, End, Depth; the Spiral Vee Vee Lift; Smoothness. A flat none.
  */
 const STATIONS = ["Start", "Deepest At", "End", "Depth"];
@@ -34,11 +34,12 @@ const ROWS: Record<string, string[]> = {
   double: ["Off Rail", "Off Stringer", "Trough At", ...STATIONS, "Smoothness"],
   spiral: ["Off Rail", "Off Stringer", "Trough At", ...STATIONS, "Vee Lift", "Smoothness"],
   triPlane: ["Off Stringer", ...STATIONS, "Smoothness"],
+  belly: ["Off Stringer", ...STATIONS, "Smoothness"],
   liftOnly: [...STATIONS, "Smoothness"],
 };
 const KIND_OF: Record<string, keyof typeof ROWS> = {
   "Flat Entry": "flat",
-  "Rolled Belly Entry": "liftOnly",
+  "Rolled Belly Entry": "belly",
   "Teardrop Nose Concave": "single",
   "Blended Nose Concave": "single",
   "Slight Single Concave Entry": "single",
@@ -47,7 +48,7 @@ const KIND_OF: Record<string, keyof typeof ROWS> = {
   "Deep Single Concave": "single",
   "Shallow Single Concave": "single",
   "Early Double Concave": "double",
-  "Continuous Belly / Rolled Mid": "liftOnly",
+  "Continuous Belly / Rolled Mid": "belly",
   "Tri-Plane Hull Center": "triPlane",
   "Flat Exit": "flat",
   "Double Concave Exit": "double",

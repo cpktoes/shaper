@@ -29,7 +29,7 @@
  *     meets a flat bottom more than 1/4" inside the nine-tenths line (`BRD_RAIL_NARROW_MIN_MM`), that section's reading
  *     width stops there (`brdRailWindows`) and the bottom is read again on those widths.
  *  6. **Two orders, the closer wins** (`lib/export/brd-fit-preview.ts`): the bottom first and then the rails (the usual), and,
- *     only when that leaves some whole section more than 4 mm off with a vee or a belly read (`BRD_RAIL_FIRST_TRY_MM`),
+ *     only when that leaves some whole section more than 3 mm off with a vee or a belly read (`BRD_RAIL_FIRST_TRY_MM`),
  *     the rails first on a flat bottom. The order decides who claims a rise near the rail: a bottom read first takes a soft
  *     50/50 rail for a belly (the founder's longboard), and a rail fitted first takes a rolled-in bottom edge for rail (the
  *     Scoop Noserider: 3.22 mm became 7.58 mm), so the bottom's reading is kept unless the rail's is clearly closer
@@ -117,8 +117,12 @@ export const BRD_RAIL_PRUNE_MM: Mm = mm(0.1);
 export const BRD_RAIL_ALIGN_PREFER_MM: Mm = mm(0.1);
 /** A section's bottom window narrows only when our rail begins more than this inside the usual nine-tenths line (1/4"). */
 export const BRD_RAIL_NARROW_MIN_MM: Mm = inchesToMm(1 / 4);
-/** Rails-first is tried only when the bottom-first board leaves some whole section more than this off. */
-export const BRD_RAIL_FIRST_TRY_MM: Mm = mm(4);
+/**
+ * Rails-first is tried only when the bottom-first board leaves some whole section more than this off. 3 mm since quick
+ * 261116-jqz (the founder, 2026-11-16): once a belly can carry a flat panel, the bottom-first pass reads a log's soft 50/50
+ * rail over a flat bottom as a panelled belly only 3.94 mm off, which the old 4 mm let pass.
+ */
+export const BRD_RAIL_FIRST_TRY_MM: Mm = mm(3);
 /** Rails-first is chosen only when it is at least this much closer over the whole sections (bottom and rail together). */
 export const BRD_RAIL_FIRST_GAIN_MM: Mm = mm(0.25);
 /** The tail blend's coarse search step, in inches: every 2" over both sliders, then every slider step round the best. */
