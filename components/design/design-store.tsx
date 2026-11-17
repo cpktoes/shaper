@@ -113,7 +113,9 @@ import {
   deriveTemplateValues,
   railAnchorStations,
   railBandsOnTheBottom,
+  railDomeNudgeTops,
   railsOnTheBottom,
+  railStringerDistances,
 } from "@/lib/geometry/design";
 import {
   DEFAULT_BOTTOM,
@@ -653,6 +655,12 @@ interface DesignContextValue {
    * order form's Rail Band Reference, as a vee board's bottom already is (the founder, 2026-11-11: "Show channels too",
    * "Always draw it"). A concave never thins the rail. VOLUME's estimator rows keep `railBands`. */
   railBandsOnBottom: RailBandsOutput;
+  /**
+   * The top of each RAILS section's Domed Deck Band slider, in inches of nudge (quick 261116-tqs, D-04): the nudge that puts the
+   * dome at the stringer there (`railDomeNudgeTops`, from the foam's half-width at the rail anchor and the section's thickness as
+   * RAILS shows it, `railsOnBottom`). The slider's low end stays -2". A stored nudge above it keeps drawing as stored.
+   */
+  railDomeNudgeTop: Record<RailSectionKey, number>;
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
   /** `fins` unless `finsImportTemplate`, in which case boardLength/tailWidth12/tailShape come
@@ -1335,7 +1343,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     () => deriveEffectiveRails(state.rails, sideProfile.effectiveFoil, state.railsImportFoilThickness),
     [state.rails, sideProfile.effectiveFoil, state.railsImportFoilThickness],
   );
-  const railBands = useMemo(() => computeRailBands(effectiveRails), [effectiveRails]);
+  // The three stations RAILS bands, and how far in from the rail the stringer stands at each (quick 261116-tqs, D-12): RAILS'
+  // plots stop at the stringer and draw it, so every section's bounds are held to it.
+  const railAnchors = useMemo(
+    () => railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
+    [sideProfile.effectiveFoil, state.outline.length],
+  );
+  const railStringers = useMemo(() => railStringerDistances(outlineGeometry, railAnchors), [outlineGeometry, railAnchors]);
+  const railBands = useMemo(() => computeRailBands(effectiveRails, "sixteenths", railStringers), [effectiveRails, railStringers]);
 
   const templateValues: VolumeTemplateValues = useMemo(
     () => deriveTemplateValues(resolvedOutline, outlineGeometry),
@@ -1475,10 +1490,6 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // channels too"): both are drawn on RAILS, on View Full Sized and on the order form's Rail Band Reference, and the
   // rail RAILS bands is never thinned by either. A board whose bottom is flat with no channel within a section's reach
   // still gets `railBands` itself back.
-  const railAnchors = useMemo(
-    () => railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
-    [sideProfile.effectiveFoil, state.outline.length],
-  );
   const railsOnBottom = useMemo(
     () => railsOnTheBottom(effectiveRails, bottomRailLift(resolvedBottom, bottomBoard), railAnchors),
     [effectiveRails, resolvedBottom, bottomBoard, railAnchors],
@@ -1486,12 +1497,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const railBandsOnBottom = useMemo(
     () =>
       railBandsOnTheBottom(
-        railsOnBottom === effectiveRails ? railBands : computeRailBands(railsOnBottom),
+        railsOnBottom === effectiveRails ? railBands : computeRailBands(railsOnBottom, "sixteenths", railStringers),
         resolvedBottom,
         bottomBoard,
         railAnchors,
       ),
-    [railsOnBottom, effectiveRails, railBands, resolvedBottom, bottomBoard, railAnchors],
+    [railsOnBottom, effectiveRails, railBands, resolvedBottom, bottomBoard, railAnchors, railStringers],
+  );
+  // The top of each section's Domed Deck Band slider (D-04): the dome at the stringer, on the rail RAILS shows.
+  const railDomeNudgeTop = useMemo(
+    () => railDomeNudgeTops(outlineGeometry, railAnchors, railsOnBottom),
+    [outlineGeometry, railAnchors, railsOnBottom],
   );
 
   // BOTTOM's two edits (Phase 17, 17-08). They sit after `bottomBoard` because both read the board the bottom is cut
@@ -2245,6 +2261,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     bottomSectionAt,
     railsOnBottom,
     railBandsOnBottom,
+    railDomeNudgeTop,
     templateValues,
     railValues,
     effectiveFins,

@@ -48,7 +48,9 @@
  *
  * What the model cannot follow (findings, with the number, not failures): a deck crowned right across (RAILS' deck is flat
  * inside the Domed Deck Band; the Egg's nose deck keeps falling from the stringer, so Deck Profile runs to its 75% floor
- * and the dome to its limit and the rail is still 2.07 mm off); between the three stations (our rail blends straight from one
+ * and the dome to its limit and the rail was still 2.07 mm off; with the dome free to run to the stringer, quick 261116-tqs
+ * D-04/D-06, the Egg's centre and nose domes go to +4" and it comes in at 1.67 mm, the Scoop's 3.22 becomes 2.70 and JFS's
+ * 1.52 becomes 1.42); between the three stations (our rail blends straight from one
  * station's numbers to the next, while the Scoop's own sections between its centre and nose are 3.22 mm off); a board built
  * on a blank (its thickness curve is the blank's, the fit opens a hand-set five-station foil, so about 5 mm on a long
  * board); and settings that draw nearly the same rail (Family against Apex Thickness, the scale against the deck marks), so
@@ -86,6 +88,7 @@ import {
   HARD_EDGE_ENDS_AT_RANGE_IN,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
+  domedDeckBandNudgeTop,
   RAIL_NUDGE_STEP_IN,
   RAIL_RATIO_RANGE,
   RAIL_SCALE_RANGE,
@@ -143,7 +146,8 @@ const NOISE = 1e-12;
 const NO_MATCH = Infinity;
 /** The nudge steps tried, in 1/16" steps; the Domed Deck Band also tries 16 (its range is a thousand times a step wider). */
 const NUDGE_TRIES = [1, 2, 4, 8] as const;
-const DOME_TRIES = [1, 2, 4, 8, 16] as const;
+/** The dome's steps reach out to 64 sixteenths: its window runs from -2" to the stringer (quick 261116-tqs, D-04, D-06). */
+const DOME_TRIES = [1, 2, 4, 8, 16, 32, 64] as const;
 /** "Scaled from center by" moves tried (tips only). */
 const SCALE_TRIES = [-0.15, -0.1, -0.05, 0.05] as const;
 
@@ -639,13 +643,15 @@ function fitAnchor(board: BrdRailBoard, section: Prepared, key: RailSectionKey, 
       if (cur.c.hardEdge && (nudge === "bottomTuck1" || nudge === "bottomTuck3")) continue;
       if (cur.c.singleTuck && nudge === "bottomTuck1") continue;
       const limit = RAIL_NUDGE_LIMIT_IN[nudge];
+      // The dome alone reaches past its old +2", out to the stringer at this anchor (D-04, D-06); every other nudge is as it was.
+      const top = nudge === "domedDeckBand" ? domedDeckBandNudgeTop(board.input.halfWidthAt(board.anchors[key]), board.foil[FOIL_KEY[key]]) : limit;
       const tries = nudge === "domedDeckBand" ? DOME_TRIES : NUDGE_TRIES;
       const candidates: BrdRailSetting[] = [];
       const steps = Math.round(mmToInches(cur.c.nudges[nudge]) / RAIL_NUDGE_STEP_IN);
       for (const t of tries) {
         for (const d of [-t, t]) {
           const inches = (steps + d) * RAIL_NUDGE_STEP_IN;
-          if (Math.abs(inches) <= limit + 1e-9) candidates.push({ ...cur.c, nudges: { ...cur.c.nudges, [nudge]: mm(inchesToMm(inches)) } });
+          if (inches >= -limit - 1e-9 && inches <= top + 1e-9) candidates.push({ ...cur.c, nudges: { ...cur.c.nudges, [nudge]: mm(inchesToMm(inches)) } });
         }
       }
       moved = tryAll(candidates) || moved;

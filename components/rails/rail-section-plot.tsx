@@ -182,6 +182,16 @@ interface RailSectionPlotProps {
 }
 
 /**
+ * The left edge a section's plot actually draws to (quick 261116-tqs, D-12, the founder, 2026-11-16: "stop the plot at the
+ * stringer"): the shared axis minimum, held to the stringer when the section knows where it stands (`output.stringer`), so a plot
+ * never runs past the stringer. A plot that stops short of the stringer keeps its span. A section that knows no board keeps
+ * the shared minimum exactly.
+ */
+export function railPlotAxisMin(output: RailSectionOutput, sharedXAxisMin: Mm): Mm {
+  return output.stringer !== undefined && output.stringer > 0 ? mm(Math.max(sharedXAxisMin, -output.stringer)) : sharedXAxisMin;
+}
+
+/**
  * The plot's viewBox bounds and pixel dimensions, computed from the same inputs the SVG render
  * uses. Exported so callers (rail-band-editor.tsx) can learn a section's natural height — driven
  * by its thickness, same as the rendered plot — without duplicating this geometry-free layout
@@ -200,7 +210,8 @@ interface RailSectionPlotProps {
  * hollows the bottom up, above the rail's own bottom (the founder, 2026-11-11: "Always draw it"), so
  * it never moves the box. Without a `bottom` the box is exactly today's.
  */
-export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, options?: { calloutRoom?: boolean }) {
+export function computeRailPlotBounds(output: RailSectionOutput, sharedXAxisMin: Mm, options?: { calloutRoom?: boolean }) {
+  const xAxisMin = railPlotAxisMin(output, sharedXAxisMin);
   const xAxisMinIn = mmToInches(xAxisMin);
   const yAxisMaxIn = mmToInches(output.bounds.yAxisMax);
   const minX = xAxisMinIn - 0.15;
@@ -540,18 +551,20 @@ export function RailPlotZoom({
 export function RailSectionPlot({
   sectionKey,
   output,
-  xAxisMin,
+  xAxisMin: sharedXAxisMin,
   fit = "width",
   callouts,
   finishedRail: showFinishedRail = false,
   ghostBands = false,
 }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  // The plot stops at the stringer (D-12): every use of the left edge below is the held one.
+  const xAxisMin = railPlotAxisMin(output, sharedXAxisMin);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
   const blankThicknessIn = domed ? mmToInches(boardThickness) : mmToInches(thicknessEff);
 
-  const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, xAxisMin, {
+  const { minX, minY, maxY, width, height } = computeRailPlotBounds(output, sharedXAxisMin, {
     calloutRoom: !!callouts && callouts.length > 0,
   });
   const px = (x: number) => (x - minX) * SCALE + LEFT_PAD;
@@ -609,6 +622,12 @@ export function RailSectionPlot({
     { x1: px(minX), y1: py(blankThicknessIn), x2: px(0.1), y2: py(blankThicknessIn) },
   ];
   const apexLine = { x1: px(0), y1: py(-0.35), x2: px(0), y2: py(blankThicknessIn + 0.35) };
+  // The stringer (D-12): drawn at the plot's inboard edge, top to bottom, wherever the span reaches it, in the drafting grammar's
+  // stringer dash and faint reference ink (TEMPLATE's own `--outline-stringer-dash` and `--outline-station-line`). A plot that
+  // stops short of the stringer, or a section that knows no board, draws none.
+  const stringerIn = output.stringer !== undefined && output.stringer > 0 ? mmToInches(output.stringer) : null;
+  const stringerLine =
+    stringerIn !== null && -stringerIn >= mmToInches(xAxisMin) - 1e-9 ? { x: px(-stringerIn), y1: py(maxY), y2: py(minY) } : null;
 
   // A rail standing on a vee or a belly (Phase 17, D-41 — the founder: "the real rail shape, post bottom
   // contouring"): every point of the drawing is moved onto the planed bottom by the one map in
@@ -663,10 +682,10 @@ export function RailSectionPlot({
   // after the band lines and before the dots, so the mark dots stay on top.
   const finished = useMemo(() => {
     if (!showFinishedRail) return null;
-    const rail = finishedRail(output, xAxisMin);
+    const rail = finishedRail(output, railPlotAxisMin(output, sharedXAxisMin));
     // On a lifted rail (D-41) the finished rail stands on the planed bottom, through the same map as the bands.
     return output.bottom ? finishedRailOnBottom(rail, output.bottom, output.boardThickness) : rail;
-  }, [showFinishedRail, output, xAxisMin]);
+  }, [showFinishedRail, output, sharedXAxisMin]);
   const projectMm = (p: Point2D) => ({ x: px(mmToInches(p.x)), y: py(mmToInches(p.y)) });
   const finishedFill = finished ? finishedRailPath(finished, projectMm, { closed: true }) : null;
   const finishedCurve = finished ? finishedRailPath(finished, projectMm) : null;
@@ -792,6 +811,19 @@ export function RailSectionPlot({
         <line key={`r${i}`} x1={rl.x1} y1={rl.y1} x2={rl.x2} y2={rl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
       ))}
       <line x1={apexLine.x1} y1={apexLine.y1} x2={apexLine.x2} y2={apexLine.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+      {stringerLine && (
+        <line
+          data-rail-stringer={sectionKey}
+          x1={stringerLine.x}
+          y1={stringerLine.y1}
+          x2={stringerLine.x}
+          y2={stringerLine.y2}
+          stroke="var(--outline-station-line)"
+          strokeWidth={1}
+          strokeDasharray="var(--outline-stringer-dash)"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {/* The cut bands and their connectors, as one group so Ghost Bands can fade the lot at once. With
           no opacity attribute (the usual case) the group paints exactly the pixels the bare lines always
           did; `data-rail-bands` is a hook for the browser tests, nothing styles it. */}

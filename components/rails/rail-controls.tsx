@@ -49,6 +49,9 @@ interface RailControlsProps {
   /** Whether a vee or a belly lifts a rail, so the card's caption names BOTTOM (UI-SPEC open item 3). Default false. */
   importedFromBottom?: boolean;
   bands: Record<RailSectionKey, RailSectionOutput>;
+  /** The top of each section's Domed Deck Band slider, in inches of nudge (quick 261116-tqs, D-04): the dome at the stringer
+   * there, from `railDomeNudgeTops`. Its low end stays the old -2". Absent: the old +2". */
+  railDomeNudgeTop?: Record<RailSectionKey, number>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
   /** The tail's Tail Rail Blends From and Ends At sliders (Phase 16, D-20/D-30/D-32), in millimetres from the tail. */
@@ -148,6 +151,8 @@ interface RailSectionControlsProps {
   sectionKey: RailSectionKey;
   spec: RailSectionSpec;
   output: RailSectionOutput;
+  /** The top of this section's Domed Deck Band slider, inches of nudge (D-04). */
+  domeNudgeTop: number;
   onChange: (patch: Partial<RailSectionSpec>) => void;
   onChangeNudge: (nudgeKey: RailNudgeKey, value: Mm) => void;
   onResetAdvanced: () => void;
@@ -182,6 +187,7 @@ function RailSectionControls({
   sectionKey,
   spec,
   output,
+  domeNudgeTop,
   onChange,
   onChangeNudge,
   onResetAdvanced,
@@ -221,8 +227,8 @@ function RailSectionControls({
   const nudges = railNudgesOf(spec.nudges);
   const scaleFromCenter = spec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
 
-  /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — ±2" for
-   * the Domed Deck Band (plan 04, R18, PC34), ±3/4" for Bottom Tuck 3 (R19, fast task 188), ±1/2" for the
+  /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — -2" to the stringer for
+   * the Domed Deck Band (plan 04, R18, PC34; the top since quick 261116-tqs, D-04), ±3/4" for Bottom Tuck 3 (R19, fast task 188), ±1/2" for the
    * deck marks, ±1/4" for Apex Thickness and Bottom Tuck 1, every window read from `RAIL_NUDGE_LIMIT_IN`, in
    * 1/16" steps (whole millimetres in Metric, -50 to +50 mm on the dome) — while the label reads the mark it
    * lands on and the nudge itself, e.g. "Deck Mark 1 — 2 5/8" (+1/8")", the FINS Off-Rail tuners' pattern.
@@ -232,7 +238,10 @@ function RailSectionControls({
    * does. */
   const nudgeRow = (key: RailNudgeKey) => {
     const limit = RAIL_NUDGE_LIMIT_IN[key];
-    const slider = measureSlider(nudges[key], { min: -limit, max: limit }, RAIL_NUDGE_STEP_IN, 1, system);
+    // The dome's slider runs from -2" to the stringer at this section (D-04); every other nudge is symmetrical. A saved dome
+    // past the top keeps its stored value and its label; its thumb sits at the right end (the slider holds it inside its track).
+    const top = key === "domedDeckBand" ? domeNudgeTop : limit;
+    const slider = measureSlider(nudges[key], { min: -limit, max: top }, RAIL_NUDGE_STEP_IN, 1, system);
     const mark = key === "apexThickness" ? output.result.apexLenRange : output.result[key];
     const markText = formatMark(mark, system);
     const trimmed = key === "apexThickness" && output.result.apexTrimmed ? ", trimmed to fit" : "";
@@ -240,7 +249,7 @@ function RailSectionControls({
       <SliderRow
         key={key}
         label={`${RAIL_NUDGE_NAMES[key]} — ${markText} (${formatSignedMark(nudges[key], system)})${trimmed}`}
-        value={slider.value}
+        value={key === "domedDeckBand" ? Math.min(slider.value, slider.max) : slider.value}
         min={slider.min}
         max={slider.max}
         step={slider.step}
@@ -570,6 +579,7 @@ export function RailControls({
   importedSpec = spec,
   importedFromBottom = false,
   bands,
+  railDomeNudgeTop,
   onChangeSection,
   onToggleHardEdge,
   onChangeHardEdgeBlendsFrom,
@@ -633,6 +643,7 @@ export function RailControls({
         sectionKey="nose"
         spec={spec.nose}
         output={bands.nose}
+        domeNudgeTop={railDomeNudgeTop?.nose ?? RAIL_NUDGE_LIMIT_IN.domedDeckBand}
         onChange={(patch) => onChangeSection("nose", patch)}
         onChangeNudge={(nudgeKey, value) => onChangeNudge("nose", nudgeKey, value)}
         onResetAdvanced={() => onResetAdvanced("nose")}
@@ -651,6 +662,7 @@ export function RailControls({
         sectionKey="center"
         spec={spec.center}
         output={bands.center}
+        domeNudgeTop={railDomeNudgeTop?.center ?? RAIL_NUDGE_LIMIT_IN.domedDeckBand}
         onChange={(patch) => onChangeSection("center", patch)}
         onChangeNudge={(nudgeKey, value) => onChangeNudge("center", nudgeKey, value)}
         onResetAdvanced={() => onResetAdvanced("center")}
@@ -669,6 +681,7 @@ export function RailControls({
         sectionKey="tail"
         spec={spec.tail}
         output={bands.tail}
+        domeNudgeTop={railDomeNudgeTop?.tail ?? RAIL_NUDGE_LIMIT_IN.domedDeckBand}
         onChange={(patch) => onChangeSection("tail", patch)}
         onChangeNudge={(nudgeKey, value) => onChangeNudge("tail", nudgeKey, value)}
         onResetAdvanced={() => onResetAdvanced("tail")}
