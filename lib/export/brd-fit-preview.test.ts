@@ -25,7 +25,7 @@ import {
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
 import { sectionHeightLabel } from "../geometry/bottom-draw";
-import { formatControlNumber, formatDim, formatGapMark, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
+import { formatBottomDepth, formatControlNumber, formatDim, formatGapMark, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { effectiveWingRadius, wingRadiusTop } from "../geometry/wings";
@@ -638,7 +638,7 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
           );
           const spec = concave.bottom!.bottom[key as "nose" | "center" | "tail"];
           const flat = cutKind(spec.name) === "flat";
-          expect(row("fit").cells[k]).toBe(flat ? spec.name : `${spec.name} ${formatMark(spec.depth, system)}`);
+          expect(row("fit").cells[k]).toBe(flat ? spec.name : `${spec.name} ${formatBottomDepth(spec.depth, system)}`);
           if (flat) {
             expect(row("stations").cells[k]).toBe("—");
             expect(row("across").cells[k]).toBe("—");
@@ -651,6 +651,8 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
           }
         });
         expect(row("file").cells[1]).toMatch(/^Single concave /);
+        // The file's own depth reads to the same 1/64" (a tenth of a millimetre) as ours beside it (quick 261116-tqs, D-09).
+        expect(row("file").cells[1]).toBe(`${BRD_FIT_COPY.bottomKinds[rows[1].section!.reads.kind]} ${formatBottomDepth(rows[1].section!.reads.depth, system)}`);
         expect(row("across").cells[1]).toBe(`Off Rail ${formatMark(concave.bottom!.bottom.center.offRail, system)}`);
         expect(block.notes).toHaveLength(2);
         expect(block.notes[0]).toBe(BRD_FIT_COPY.bottomWindowNote);

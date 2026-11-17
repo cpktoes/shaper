@@ -24,7 +24,7 @@ import {
   type ResolvedChannels,
 } from "@/lib/geometry/bottom";
 import { CHANNEL_RUN_NAME, formatChannelAngle } from "@/lib/geometry/bottom-print";
-import { formatDim, formatMark, formatMarkOrLessBare } from "@/lib/geometry/measure-display";
+import { formatBottomDepthBare, formatDim, formatMark } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** A section's name as the panel and the screen readers say it. */
@@ -219,12 +219,13 @@ export function wingWords(wings: readonly { depth: Mm; station: Mm }[], system: 
  *
  * Three readings, by how much foam is off there:
  * - under `BOTTOM_DATA_DEPTH_SHOWN` (the sketch's 0.25 mm) nothing is cut, and the cell is the dash;
- * - a cut that is there but too shallow for the tape reads less than its smallest step — `<1/16"`, Metric `<1` under a
- *   head that says mm — never `0"` (the founder, 2026-11-10: "say <1/16 if it's not actually 0");
- * - everything else is the depth as a mark.
+ * - a cut that is there but too shallow for the tape reads less than its smallest step — `<1/64"`, Metric `<0.1` under a
+ *   head that says mm — never `0"` (the founder, 2026-11-10: "say <1/16 if it's not actually 0", the step now 1/64");
+ * - everything else is the depth to the nearest 1/64" (a tenth of a millimetre in Metric): a bottom depth's own reading
+ *   (quick 261116-tqs, D-09).
  */
 export function bottomDepthCell(value: Mm, system: UnitsSystem): string {
-  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system);
+  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatBottomDepthBare(value, system);
 }
 
 /** A layout-marks column's words (D-16; UI-SPEC § Copywriting "DATA"): each section's mark — `Nose edge`, `Center

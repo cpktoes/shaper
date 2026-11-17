@@ -149,7 +149,10 @@ export const BRD_BOTTOM_MARK_COARSE_IN = 1 / 4;
 /** A rising section whose height halfway across is under this share of its rise at the end reads as a belly, not a vee. */
 export const BRD_BOTTOM_BELLY_SHARE = 1 / 3;
 
-/** How many Depth steps there are: 1/16" to 1/2" (D-06). */
+/**
+ * How many Depth steps there are: 1/16" to 1/2" (D-06). The fit's own depth grid stays 1/16" even though BOTTOM's Depth slider
+ * steps 1/64" since quick 261116-tqs (D-09), so the names are chosen exactly as before; the polish then lands anywhere.
+ */
 const DEPTH_STEPS = Math.round(BOTTOM_DEPTH_RANGE_IN.max / BOTTOM_MARK_STEP_IN);
 /** One Depth step, millimetres. */
 const DEPTH_STEP_MM: Mm = inchesToMm(BOTTOM_MARK_STEP_IN);

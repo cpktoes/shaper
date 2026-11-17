@@ -25,10 +25,10 @@ import { BOTTOM_PRINT_NATURAL_NOTE, bottomPrintCuts, bottomPrintLines, CHANNEL_R
 import type { DesignSummaryFields } from "./design";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
-import { formatDimBare, formatMark, formatMarkOrLess } from "./measure-display";
+import { formatBottomDepth, formatDimBare, formatMark, formatMarkOrLess } from "./measure-display";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { inchesToMm, mm, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
+import { formatTenthMm, inchesToMm, mm, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
 
 /*
  * Every expected line here is put together from the app's own formatters and the cut's own numbers — never typed
@@ -162,7 +162,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const bottom = bottomOf(board, { center: "Deep Single Concave" });
       const cut = resolveBottom(bottom, board).center;
       expect(lines(board, bottom, system)).toEqual([
-        `Center: Deep Single Concave ${formatMark(cut.depth, system)}, ${stations("center", cut, board, system)}; ${formatMark(cut.offRail, system)} off the rail.`,
+        `Center: Deep Single Concave ${formatBottomDepth(cut.depth, system)}, ${stations("center", cut, board, system)}; ${formatMark(cut.offRail, system)} off the rail.`,
       ]);
     });
 
@@ -172,7 +172,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const cut = resolveBottom(bottom, board).nose;
       expect(cut.closesToPoint).toBe(true);
       expect(lines(board, bottom, system)).toEqual([
-        `Nose: Teardrop Nose Concave ${formatMark(cut.depth, system)}, ${stations("nose", cut, board, system)}; ${formatMark(cut.offRail, system)} off the rail, closes to a point.`,
+        `Nose: Teardrop Nose Concave ${formatBottomDepth(cut.depth, system)}, ${stations("nose", cut, board, system)}; ${formatMark(cut.offRail, system)} off the rail, closes to a point.`,
       ]);
       // from the nose the start is the smaller figure: a nose cut starts near the nose and ends toward the center
       expect(stationFromNearestTip("nose", cut.start, board)).toBeLessThan(stationFromNearestTip("nose", cut.end, board));
@@ -190,7 +190,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const bottom = bottomOf(board, { center: "Early Double Concave" });
       const cut = resolveBottom(bottom, board).center;
       expect(lines(board, bottom, system)).toEqual([
-        `Center: Early Double Concave ${formatMark(cut.depth, system)}, ${stations("center", cut, board, system)}; ` +
+        `Center: Early Double Concave ${formatBottomDepth(cut.depth, system)}, ${stations("center", cut, board, system)}; ` +
           `${formatMark(cut.offRail, system)} off the rail, flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`,
       ]);
     });
@@ -201,7 +201,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const cut = resolveBottom(bottom, board).tail;
       expect(cut.spiral).toBe(true);
       expect(lines(board, bottom, system)).toEqual([
-        `Tail: Spiral Vee ${formatMark(cut.depth, system)} with ${formatMark(cut.veeLift, system)} vee lift, ${stations("tail", cut, board, system)}; ` +
+        `Tail: Spiral Vee ${formatBottomDepth(cut.depth, system)} with ${formatMark(cut.veeLift, system)} vee lift, ${stations("tail", cut, board, system)}; ` +
           `${formatMark(cut.offRail, system)} off the rail, flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`,
       ]);
     });
@@ -217,7 +217,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const bottom = bottomOf(board, { [section]: name });
       const cut = resolveBottom(bottom, board)[section];
       expect(lines(board, bottom, system)).toEqual([
-        `${BOTTOM_SECTION_NAME[section]}: ${name} ${formatMark(cut.depth, system)} rail lift, ${stations(section, cut, board, system)}.`,
+        `${BOTTOM_SECTION_NAME[section]}: ${name} ${formatBottomDepth(cut.depth, system)} rail lift, ${stations(section, cut, board, system)}.`,
       ]);
     });
 
@@ -227,7 +227,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const cut = resolveBottom(bottom, board).center;
       expect(cut.offStringer).toBeGreaterThan(0);
       expect(lines(board, bottom, system)).toEqual([
-        `Center: Tri-Plane Hull Center ${formatMark(cut.depth, system)} rail lift, ${stations("center", cut, board, system)}; panel ${formatMark(cut.offStringer, system)} off the stringer.`,
+        `Center: Tri-Plane Hull Center ${formatBottomDepth(cut.depth, system)} rail lift, ${stations("center", cut, board, system)}; panel ${formatMark(cut.offStringer, system)} off the stringer.`,
       ]);
     });
 
@@ -239,7 +239,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const width = channelFit(ch, board, resolved.wingRule).width;
       const longest = ch.longest === "same" ? "all the same length" : `${ch.longest} pair longest, ${formatBottomStation(ch.stagger, system)} stagger`;
       expect(lines(board, bottom, system)).toEqual([
-        `Channels: ${count} at ${formatMark(width, system)}, ${formatMark(ch.depth, system)} deep, ` +
+        `Channels: ${count} at ${formatMark(width, system)}, ${formatBottomDepth(ch.depth, system)} deep, ` +
           `${range(ch.start, ch.end, system)} from the tail, deepest ${formatBottomStation(ch.deepest, system)}; ${runOptionLabel(ch.run)}, ${longest}.`,
       ]);
     });
@@ -337,9 +337,10 @@ describe("Metric: a range pair carries its unit once, marks read whole millimetr
   });
 
   it("the depth and the distance off the rail are whole millimetres", () => {
-    expect(out[0]).toMatch(/^Center: Deep Single Concave \d+ mm, /);
+    // A depth reads to a tenth of a millimetre (quick 261116-tqs, D-09); the distance off the rail is still a whole millimetre.
+    expect(out[0]).toMatch(/^Center: Deep Single Concave \d+\.\d mm, /);
     expect(out[0]).toMatch(/; \d+ mm off the rail\.$/);
-    expect(out[1]).toMatch(/^Channels: 6 at \d+ mm, \d+ mm deep, /);
+    expect(out[1]).toMatch(/^Channels: 6 at \d+ mm, \d+\.\d mm deep, /);
     expect(out[1]).toMatch(/, \d+\.\d cm stagger\.$/);
   });
 
@@ -389,15 +390,18 @@ describe("the wing rule's note (D-19): one more line when Off Rail is measured f
 });
 
 describe("a cut that is there never reads as a nought (17-15; the founder, 2026-11-10)", () => {
-  // The sliders step by a whole sixteenth or a whole millimetre, so only a board file made outside the app can hold a
-  // depth this small. A stand-in depth, not a board's figure: there, and under half a step of either tape.
-  const TINY = mm(0.4);
-  const less = (system: UnitsSystem) => formatMarkOrLess(TINY, system);
+  // The sliders step by a 64th of an inch or a tenth of a millimetre, so only a board file made outside the app can hold a
+  // depth this small. A stand-in depth, not a board's figure: there, and under half a step of either tape (a 64th, a tenth).
+  const TINY = mm(0.04);
+  const less = (system: UnitsSystem) => formatBottomDepth(TINY, system);
+  const lessLift = (system: UnitsSystem) => formatMarkOrLess(TINY, system);
 
   it("the stand-in is one the plain mark would print as a nought", () => {
     for (const system of UNITS_SYSTEMS) expect(formatMark(TINY, system)).toBe(formatMark(mm(0), system));
-    expect(less("imperial")).toBe('<1/16"');
-    expect(less("metric")).toBe("<1 mm");
+    expect(less("imperial")).toBe('<1/64"');
+    expect(less("metric")).toBe("<0.1 mm");
+    expect(lessLift("imperial")).toBe('<1/16"');
+    expect(lessLift("metric")).toBe("<1 mm");
   });
 
   describe.each(UNITS_SYSTEMS.map((s) => [s] as const))("%s", (system) => {
@@ -419,7 +423,7 @@ describe("a cut that is there never reads as a nought (17-15; the founder, 2026-
       expect(cut.depth).toBe(TINY);
       expect(cut.veeLift).toBe(TINY);
       expect(lines(board, bottom, system)).toEqual([
-        `Tail: Spiral Vee ${less(system)} with ${less(system)} vee lift, ${stations("tail", cut, board, system)}; ` +
+        `Tail: Spiral Vee ${less(system)} with ${lessLift(system)} vee lift, ${stations("tail", cut, board, system)}; ` +
           `${formatMark(cut.offRail, system)} off the rail, flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`,
       ]);
     });
@@ -439,7 +443,9 @@ describe("a cut that is there never reads as a nought (17-15; the founder, 2026-
       const board = byId("shortboard");
       const bottom = bottomOf(board, { center: "Deep Single Concave" });
       const cut = resolveBottom(bottom, board).center;
-      expect(formatMarkOrLess(cut.depth, system)).toBe(formatMark(cut.depth, system));
+      // A depth on a 1/16" step reads in Imperial exactly as the old reader read it; in Metric to a tenth.
+      expect(formatBottomDepth(cut.depth, "imperial")).toBe(formatMarkOrLess(cut.depth, "imperial"));
+      expect(formatBottomDepth(cut.depth, system)).toBe(system === "imperial" ? formatMark(cut.depth, system) : `${formatTenthMm(cut.depth)} mm`);
     });
   });
 });

@@ -194,10 +194,19 @@ export const BOTTOM_FLOOR: Mm = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
 
 /**
  * The mark sliders' step and ranges on BOTTOM (D-06, UI-SPEC §1), in inches: 1/16" steps (1 mm in Metric, through
- * `measureSlider`), the Depth slider 0 to 1/2", Off Rail 0 to 6", Off Stringer 0 to 9", Trough At 1/2" to 8", Vee Lift
- * 0 to 1/2". They live here so the page's sliders and the .brd fit read one set of numbers (quick 261113-gwr).
+ * `measureSlider`) across the board, the Depth slider 0 to 1/2" (in finer steps since quick 261116-tqs, below), Off Rail 0 to
+ * 6", Off Stringer 0 to 9", Trough At 1/2" to 8", Vee Lift 0 to 1/2". The stations step 1/2" (10 mm in Metric) along the board
+ * (D-10). They live here so the page's sliders and the .brd fit read one set of numbers (quick 261113-gwr).
  */
 export const BOTTOM_MARK_STEP_IN = 1 / 16;
+/**
+ * A BOTTOM depth's own step, a cut's and the channels': 1/64", and 0.1 mm in Metric (quick 261116-tqs, D-09, the founder,
+ * 2026-11-16: "1/64" (or .1mm) for depth, use 1/16" across the width of the board, and 1/2" only for along the length of the
+ * board"). Every depth reads to the same step (`formatBottomDepth`). The .brd fit's own depth grid is still `BOTTOM_MARK_STEP_IN`,
+ * so the names it chooses are as they were; its polish then lands anywhere.
+ */
+export const BOTTOM_DEPTH_STEP_IN = 1 / 64;
+export const BOTTOM_DEPTH_STEP_MM = 0.1;
 export const BOTTOM_DEPTH_RANGE_IN = { min: 0, max: 0.5 } as const;
 export const BOTTOM_MARK_RANGES_IN = {
   offRail: { min: 0, max: 6 },

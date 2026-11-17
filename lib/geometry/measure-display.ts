@@ -28,9 +28,11 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatInchesFractionOrLess,
+  formatInchesFractionOrLessFine,
   formatInchesFractionUp,
   formatSignedInchesFraction,
   formatTenthMm,
+  formatTenthMmOrLess,
   formatWholeMm,
   formatWholeMmOrLess,
   formatWholeMmUp,
@@ -42,6 +44,7 @@ import {
   parseImperial,
   parseMetric,
   roundToSixteenthInch,
+  roundToTenthMm,
   roundToWholeMm,
   squareMmToSquareCentimetres,
   squareMmToSquareInches,
@@ -122,6 +125,21 @@ export function formatMarkOrLess(value: Mm, system: UnitsSystem): string {
 /** The bare form of `formatMarkOrLess`, for a table whose column head carries the unit: `<1/16"`, `<1`. */
 export function formatMarkOrLessBare(value: Mm, system: UnitsSystem): string {
   return system === "metric" ? formatWholeMmOrLess(value) : formatInchesFractionOrLess(value);
+}
+
+/**
+ * A BOTTOM depth, a cut's or the channels' (quick 261116-tqs, D-09, the founder, 2026-11-16: "1/64" (or .1mm) for depth", shown
+ * "everywhere a depth is shown"): imperial the nearest 1/64" as a reduced fraction (`3/64"`, `1/8"`), metric a tenth of a millimetre
+ * (`3.2 mm`), the one mark family finer than the house rule (CLAUDE.md Rule 2). Like `formatMarkOrLess`, a depth that is there never
+ * reads as nothing: `<1/64"` and `<0.1 mm`. A depth on a 1/16" step reads in Imperial exactly as `formatMarkOrLess` reads it.
+ */
+export function formatBottomDepth(value: Mm, system: UnitsSystem): string {
+  return system === "metric" ? `${formatTenthMmOrLess(value)} mm` : formatInchesFractionOrLessFine(value);
+}
+
+/** The bare form of `formatBottomDepth`, for a table whose column head carries the unit: `<1/64"`, `3.2`. */
+export function formatBottomDepthBare(value: Mm, system: UnitsSystem): string {
+  return system === "metric" ? formatTenthMmOrLess(value) : formatInchesFractionOrLessFine(value);
 }
 
 /** A gap this small is nothing off: the float noise an exact landing leaves (a millionth of a millimetre). */
@@ -386,7 +404,8 @@ export function measureSlider(
       min: range.min,
       max: range.max,
       step: range.step,
-      toMm: (dragged: number) => roundToWholeMm(mm(clampFinite(dragged, range.min, range.max))),
+      // A step under a millimetre (a BOTTOM depth's 0.1 mm, D-09) snaps to its own tenth; every other slider's step is a whole mm.
+      toMm: (dragged: number) => (stepMm < 1 ? roundToTenthMm : roundToWholeMm)(mm(clampFinite(dragged, range.min, range.max))),
     };
   }
   return {

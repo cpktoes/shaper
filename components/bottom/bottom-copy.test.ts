@@ -26,7 +26,7 @@ import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
 import { FOIL_THICKNESS_RANGE_IN } from "@/lib/geometry/foil";
 import { CHANNEL_RUN_NAME, formatChannelAngle } from "@/lib/geometry/bottom-print";
-import { formatDim, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
+import { formatBottomDepthBare, formatDim, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -462,12 +462,12 @@ describe("BOTTOM's WINGS row (17-12, D-19): the words, and every figure through 
   });
 });
 
-describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on the printed page (17-15; the founder, 2026-11-10)", () => {
-  // The three depths below are stand-ins for the three bands of the rule, not a board's figures: one under the
-  // quarter-millimetre line, one between it and half a millimetre, one between half a millimetre and half a sixteenth.
+describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on the printed page (17-15; the founder, 2026-11-10; to 1/64\" and 0.1 mm, quick 261116-tqs, D-09)", () => {
+  // The three depths below are stand-ins for the bands of the rule, not a board's figures: one under the quarter-millimetre
+  // line, one just on it, one between 1/32" and 1/16".
   const NOTHING = mm(0.1);
-  const UNDER_BOTH_TAPES = mm(0.4);
-  const UNDER_THE_INCH_TAPE_ONLY = mm(0.7);
+  const ON_THE_LINE = mm(BOTTOM_DATA_DEPTH_SHOWN);
+  const BETWEEN_SIXTEENTHS = mm(0.7);
 
   it("under a quarter of a millimetre nothing is cut, and the cell is the dash — the rule as it always was", () => {
     for (const system of SYSTEMS) {
@@ -477,37 +477,30 @@ describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on t
     }
   });
 
-  it("a depth that is there but too small for the tape reads less than its smallest step, never a nought", () => {
-    expect(bottomDepthCell(BOTTOM_DATA_DEPTH_SHOWN, "imperial")).toBe('<1/16"');
-    expect(bottomDepthCell(BOTTOM_DATA_DEPTH_SHOWN, "metric")).toBe("<1");
-    expect(bottomDepthCell(UNDER_BOTH_TAPES, "imperial")).toBe('<1/16"');
-    expect(bottomDepthCell(UNDER_BOTH_TAPES, "metric")).toBe("<1");
+  it("a depth that is there reads to its own step, 1/64\" or a tenth of a millimetre, never a nought", () => {
+    // The shallowest cut a cell shows (a quarter millimetre) now has a reading of its own: 1/64", 0.3 mm.
+    expect(bottomDepthCell(ON_THE_LINE, "imperial")).toBe(formatBottomDepthBare(ON_THE_LINE, "imperial"));
+    expect(bottomDepthCell(ON_THE_LINE, "metric")).toBe(formatBottomDepthBare(ON_THE_LINE, "metric"));
     for (const system of SYSTEMS) {
-      for (const depth of [BOTTOM_DATA_DEPTH_SHOWN, UNDER_BOTH_TAPES]) {
-        expect(bottomDepthCell(depth, system)).not.toBe(formatMarkBare(mm(0), system));
-      }
+      expect(bottomDepthCell(ON_THE_LINE, system)).not.toBe(formatBottomDepthBare(mm(0), system));
     }
   });
 
-  it("a millimetre tape reads what an inch tape cannot: between half a millimetre and half a sixteenth", () => {
-    expect(bottomDepthCell(UNDER_THE_INCH_TAPE_ONLY, "imperial")).toBe('<1/16"');
-    expect(bottomDepthCell(UNDER_THE_INCH_TAPE_ONLY, "metric")).toBe(formatMarkBare(mm(1), "metric"));
+  it("an off-step depth reads between sixteenths: a millimetre tape is read to a tenth, an inch tape to a 64th", () => {
+    expect(bottomDepthCell(BETWEEN_SIXTEENTHS, "imperial")).toBe(formatBottomDepthBare(BETWEEN_SIXTEENTHS, "imperial"));
+    expect(bottomDepthCell(BETWEEN_SIXTEENTHS, "imperial")).not.toBe(formatMarkBare(BETWEEN_SIXTEENTHS, "imperial"));
+    expect(bottomDepthCell(BETWEEN_SIXTEENTHS, "metric")).toBe(formatBottomDepthBare(BETWEEN_SIXTEENTHS, "metric"));
   });
 
-  it("from half a step up the cell is the mark itself, as it always was", () => {
-    const halfSixteenth = inchesToMm(1 / 32);
-    expect(bottomDepthCell(halfSixteenth, "imperial")).toBe(formatMarkBare(inchesToMm(1 / 16), "imperial"));
-    expect(bottomDepthCell(mm(0.5), "metric")).toBe(formatMarkBare(mm(1), "metric"));
-    for (const system of SYSTEMS) {
-      for (const sixteenths of [1, 2, 3, 5, 8]) {
-        const depth = inchesToMm(sixteenths / 16);
-        expect(bottomDepthCell(depth, system)).toBe(formatMarkBare(depth, system));
-      }
+  it("a depth on a 1/16\" step reads in Imperial exactly as it always did", () => {
+    for (const sixteenths of [1, 2, 3, 5, 8]) {
+      const depth = inchesToMm(sixteenths / 16);
+      expect(bottomDepthCell(depth, "imperial")).toBe(formatMarkBare(depth, "imperial"));
+      expect(bottomDepthCell(depth, "metric")).toBe(formatBottomDepthBare(depth, "metric"));
     }
   });
 
-  it("on the four stock boards with a cut in every section and eight channels, no depth cell reads a nought — and some read less-than", () => {
-    let lessThan = 0;
+  it("on the four stock boards with a cut in every section and eight channels, no depth cell reads a nought", () => {
     for (const preset of BOARD_PRESETS) {
       const found = phase16Boards().find((b) => b.label === `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`)!;
       const fields = found.fields;
@@ -520,24 +513,16 @@ describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on t
       const rows = bottomDataRows(resolveBottom(bottom, bottomBoard), bottomBoard);
       expect(rows.length, preset.id).toBeGreaterThan(8);
       for (const system of SYSTEMS) {
-        const nought = formatMarkBare(mm(0), system);
+        const nought = formatBottomDepthBare(mm(0), system);
         for (const row of rows) {
           for (const depth of [row.deepest, row.railLift]) {
             const cell = bottomDepthCell(depth, system);
             expect(cell, `${preset.id} ${system} at ${row.station}`).not.toBe(nought);
-            if (cell.startsWith("<")) {
-              lessThan += 1;
-              // What used to print as a nought, and nothing else, is what reads less-than now.
-              expect(formatMarkBare(depth, system), `${preset.id} ${system} at ${row.station}`).toBe(nought);
-              expect(depth).toBeGreaterThanOrEqual(BOTTOM_DATA_DEPTH_SHOWN);
-            } else if (cell !== BOTTOM_COPY.emptyCell) {
-              expect(cell).toBe(formatMarkBare(depth, system));
-            }
+            if (cell !== BOTTOM_COPY.emptyCell) expect(cell).toBe(formatBottomDepthBare(depth, system));
           }
         }
       }
     }
-    expect(lessThan, "the stock boards do carry such depths (non-vacuity)").toBeGreaterThan(0);
   }, 120_000);
 });
 

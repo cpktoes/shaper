@@ -81,6 +81,7 @@ import {
   formatDim,
   formatGapMark,
   formatMark,
+  formatBottomDepth,
   formatMarkOrLess,
   formatSignedDim,
   formatSignedMark,
@@ -1062,7 +1063,7 @@ export function brdBottomFrames(rows: readonly BrdBottomRow[], height: SectionHe
 }
 
 const cutWords = (spec: BottomCutSpec, system: UnitsSystem): string =>
-  cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatMark(spec.depth, system)}`;
+  cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatBottomDepth(spec.depth, system)}`;
 
 /** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
 function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
@@ -1101,7 +1102,7 @@ function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFi
   const fileWords = (row: BrdBottomRow): string => {
     if (!row.section) return c.noValue;
     const { kind, depth } = row.section.reads;
-    return kind === "flat" ? c.bottomKinds.flat : `${c.bottomKinds[kind]} ${formatMark(depth, system)}`;
+    return kind === "flat" ? c.bottomKinds.flat : `${c.bottomKinds[kind]} ${formatBottomDepth(depth, system)}`;
   };
   const w = closeWordsOf(found, length, system);
   return {

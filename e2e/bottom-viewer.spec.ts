@@ -5,7 +5,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
 import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, foamOff, type BottomFloorFlag, type BottomSectionKey } from "../lib/geometry/bottom";
 import { gaugeReads } from "../lib/geometry/bottom-draw";
-import { formatMark, formatMarkBare, formatMarkOrLessBare } from "../lib/geometry/measure-display";
+import { formatBottomDepthBare, formatMark } from "../lib/geometry/measure-display";
 import type { Mm } from "../lib/geometry/units";
 import { RACK_COPY } from "../components/setup/rack-config";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
@@ -532,8 +532,7 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
   });
 
   for (const system of ["imperial", "metric"] as const) {
-    const less = system === "metric" ? "<1" : '<1/16"';
-    test(`a depth that is there but too small for the tape reads ${less}, never a nought (${system})`, async ({ page }) => {
+    test(`a depth that is there but very small reads to its own step (1/64", a tenth of a millimetre), never a nought (${system})`, async ({ page }) => {
       test.setTimeout(180_000);
       // A Longboard with a cut in every section: its cuts thin out to almost nothing at some stations (a third to a
       // half of a millimetre), which used to read `0"` / `0` in the Deepest cut column (the founder, 2026-11-10).
@@ -544,11 +543,13 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
         channels: 8,
       });
       const rows = bottomDataRows(board.resolved, board.board);
-      // The rule, spelled out: under a quarter of a millimetre nothing is cut (the dash); above it the mark, or
-      // "less than the tape's smallest step" when the mark would round to nothing.
-      const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system));
+      // The rule, spelled out: under a quarter of a millimetre nothing is cut (the dash); above it the depth to its own
+      // step, a 64th of an inch or a tenth of a millimetre (quick 261116-tqs, D-09).
+      const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatBottomDepthBare(value, system));
       const expected = rows.map((row) => [cell(row.deepest), cell(row.railLift)]);
-      expect(expected.flat(), "this board has such a depth (non-vacuity)").toContain(less);
+      const thin = rows.flatMap((row) => [row.deepest, row.railLift]).filter((v) => v >= BOTTOM_DATA_DEPTH_SHOWN && v < 0.5);
+      expect(thin.length, "this board has such a depth (non-vacuity)").toBeGreaterThan(0);
+      expect(expected.flat()).toContain(formatBottomDepthBare(thin[0] as Mm, system));
       expect(expected.flat(), "and a station where nothing is cut").toContain(BOTTOM_COPY.emptyCell);
 
       if (system === "metric") {
@@ -568,7 +569,7 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
           .locator("[data-bottom-depths] tbody tr")
           .evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll("td")].slice(1, 3).map((td) => (td.textContent ?? "").trim())));
       await expect.poll(depthCells, { timeout: 60_000 }).toEqual(expected);
-      expect((await depthCells()).flat(), "no depth cell reads a bare nought").not.toContain(formatMarkBare(0 as Mm, system));
+      expect((await depthCells()).flat(), "no depth cell reads a bare nought").not.toContain(formatBottomDepthBare(0 as Mm, system));
     });
   }
 
@@ -579,7 +580,7 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     test.setTimeout(180_000);
     const board = boardWithBottom("fish", { channels: 8 });
     const rows = bottomDataRows(board.resolved, board.board);
-    const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, "imperial"));
+    const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatBottomDepthBare(value, "imperial"));
     const expected = rows.map((row) => [cell(row.deepest), cell(row.railLift)]);
     // the tail row: the channel at the rail is deep enough to have read as a figure, and it no longer does
     const tail = rows[0];
