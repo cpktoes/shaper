@@ -133,18 +133,23 @@ export function RailBandEditor() {
   const legend =
     openSections.length > 0 ? buildRailLegend(bands[openSections[0]], { finishedRail: showFinishedRail }) : [];
 
-  // Every open section's viewBox WIDTH is identical (computeRailPlotBounds derives it from
-  // sharedXAxisMin alone, not per-section thickness) -- only viewBox HEIGHT differs. Rendering
-  // every plot at one common pixel width `plotWidth` therefore automatically gives every plot the
-  // same scale (renderedWidth / viewBoxWidth) and the same left/right edges, which is exactly the
-  // user's "shared scale, aligned x-axes" requirement -- see PLAN.md's derivation. `vbW` reads
-  // openSections[0] only because every open section agrees on it; `sumOfVbH` is the one value that
-  // actually varies per section and drives how much of the container's height the stack needs.
-  const vbW = openSections.length > 0 ? computeRailPlotBounds(bands[openSections[0]], sharedXAxisMin).width : MAX_PLOT_W;
-  const sumOfVbH = openSections.reduce(
-    (sum, key) => sum + computeRailPlotBounds(bands[key], sharedXAxisMin).height,
-    0,
-  );
+  // One scale across the three plots, and one right edge (the rail, x = 0). Every plot is drawn at the
+  // same number of pixels per viewBox unit, and a viewBox unit is a fixed fraction of an inch, so the
+  // plots share a scale exactly when each box's pixel width is its own viewBox width times one common
+  // factor. A section's viewBox width is NOT the same for every plot any more: each plot stops at its own
+  // stringer (D-12, `railPlotAxisMin`), so a plot that reaches the stringer sooner is a narrower box.
+  // Quick 261116-tqs follow-up: the widest open plot is the one that takes `plotWidth` (the solver
+  // below fits it to the column), and every other plot is drawn at `plotWidth x its own width / the
+  // widest width` -- the same factor, so an inch is the same length on all three. The rail sits the same
+  // distance in from every box's right edge (`0.15 x SCALE` units, whatever the section), so lining the
+  // boxes up on their right edges lines up x = 0 (the founder's rule: aligned x-axes); a plot that stops
+  // at its stringer is simply shorter on its stringer (left) side. `sumOfVbH` is the other thing that varies
+  // per section and drives how much of the container's height the stack needs.
+  const plotBoxes = Object.fromEntries(
+    openSections.map((key) => [key, computeRailPlotBounds(bands[key], sharedXAxisMin)]),
+  ) as Partial<Record<RailSectionKey, { width: number; height: number }>>;
+  const vbW = openSections.length > 0 ? Math.max(...openSections.map((key) => plotBoxes[key]!.width)) : MAX_PLOT_W;
+  const sumOfVbH = openSections.reduce((sum, key) => sum + plotBoxes[key]!.height, 0);
   const openSectionsKey = openSections.join(",");
 
   const plotsContainerRef = useRef<HTMLDivElement | null>(null);
@@ -163,6 +168,8 @@ export function RailBandEditor() {
   );
   const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
   const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
+  // The pixel width one section's plot draws at, given the width the widest plot takes.
+  const plotBoxWidth = (key: RailSectionKey) => (plotWidth * plotBoxes[key]!.width) / vbW;
   const [plotFitMeasured, setPlotFitMeasured] = useState(false);
   // How far the plot row is pushed down to sit below the panel's corner toolbar (fast task,
   // 2026-11-02). The first plot's zoom row sits at the right end of its title line, and that line is
@@ -433,24 +440,29 @@ export function RailBandEditor() {
                 <RailPlotZoom
                   key={key}
                   controlHost={zoomHosts[key] ?? null}
-                  className="flex flex-none flex-col items-center"
+                  className="flex flex-none flex-col items-end"
                   style={{ width: plotWidth }}
                 >
+                  {/* The heading row stays at the shared width, centred over it, with the zoom row at its
+                      right end: a plot that stops at its stringer is shorter on its left side only, and
+                      the title and the zoom row do not move with it. */}
                   <div
                     ref={(el) => {
                       titleRefs.current[key] = el;
                     }}
-                    className="mb-1 flex-none text-base font-extrabold text-surf-ink"
+                    className="mb-1 w-full flex-none text-center text-base font-extrabold text-surf-ink"
                   >
                     {SECTION_TITLE[key]}
                   </div>
-                  <RailSectionPlot
-                    sectionKey={key}
-                    output={bands[key]}
-                    xAxisMin={sharedXAxisMin}
-                    finishedRail={showFinishedRail}
-                    ghostBands={ghostBands}
-                  />
+                  <div className="flex-none" style={{ width: plotBoxWidth(key) }}>
+                    <RailSectionPlot
+                      sectionKey={key}
+                      output={bands[key]}
+                      xAxisMin={sharedXAxisMin}
+                      finishedRail={showFinishedRail}
+                      ghostBands={ghostBands}
+                    />
+                  </div>
                 </RailPlotZoom>
               ))}
             </div>
@@ -471,13 +483,13 @@ export function RailBandEditor() {
               className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 max-shell:hidden"
             >
               {openSections.map((key) => {
-                const box = computeRailPlotBounds(bands[key], sharedXAxisMin);
+                const box = plotBoxes[key]!;
                 return (
-                  <div key={key} className="relative flex flex-none flex-col items-center" style={{ width: plotWidth }}>
+                  <div key={key} className="relative flex flex-none flex-col items-end" style={{ width: plotWidth }}>
                     <div aria-hidden className="mb-1 flex-none text-base font-extrabold">
                       {"\u00a0"}
                     </div>
-                    <div aria-hidden className="block w-full" style={{ aspectRatio: `${box.width} / ${box.height}` }} />
+                    <div aria-hidden className="block" style={{ width: plotBoxWidth(key), aspectRatio: `${box.width} / ${box.height}` }} />
                     <div
                       ref={zoomHostRefs[key]}
                       data-rail-zoom-host={key}
