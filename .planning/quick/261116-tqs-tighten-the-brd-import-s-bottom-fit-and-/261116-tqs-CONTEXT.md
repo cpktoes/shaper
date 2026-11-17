@@ -119,3 +119,25 @@ than writing the founder's words.
 - **D-11 — "let the fit land anywhere."** The polish stores whatever value fits closest, between steps on any axis; the controls
   show it rounded to their own steps (D-09/D-10). The on-step comparison D-01 asked for is no longer needed for the decision;
   report it in the SUMMARY only if it was already measured.
+
+## The founder's word on the dome and the plot (2026-11-16, during execution)
+
+"For the domed deck slider I meant that it can get as close to the stringer as 1" so that the entire deck looks pretty domed. We
+should also stop the plot at the stringer too (maybe show a dashed line like the stringer on the template page)."
+
+- **D-04 confirmed as planned:** the slider's far end is the section's half-width less 1" (the dome can come in as close as 1"
+  from the stringer); a saved dome already past that line keeps its stored value (the plan's reading, not contradicted).
+- **D-12 — RAILS' cross-section plots stop at the stringer and draw it.** Wherever a rail section's plot is drawn from
+  `railPlotBounds` (RAILS' VIEWER on every device, and any printed rail-band sheet that uses the same bounds), the plot's span
+  never runs past the stringer: today's "2" beyond the Domed Deck Band" is capped at the stringer (the section's half-width in
+  from the rail). The stringer is drawn as a line at that edge in the drafting grammar's stringer dash (`16 4 4 4`, the same
+  dash TEMPLATE's stringer uses — see the sketch-findings skill's drawing-and-callouts reference and TEMPLATE's own stringer
+  line for the token and stroke), in the faint reference ink, top to bottom of the section. A plot that today stops short of the
+  stringer keeps its span and still gets no stringer line only if the stringer is off the plot — the line is drawn only where the
+  stringer is within the span. Desktop baselines that change because of the new line are a finding to report, with the
+  picture, not something to re-record silently.
+
+- **D-04 amended (the founder, 2026-11-16): "let's just allow it to go to the stringer then."** The Domed Deck Band's far end is
+  the stringer itself — the section's full half-width in from the rail — not 1" short of it. Everything else in D-04, D-05, D-06
+  and D-12 stands: saved domes keep their stored values, the rails fit searches the full reach, and the plot stops at the stringer
+  (which a dome at the far end now meets exactly).
