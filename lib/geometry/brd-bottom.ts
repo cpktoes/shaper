@@ -28,7 +28,7 @@
  *     1/16" within reach of the best; quick 261116-jqz, D-04). A move is made only when it brings the fit at least 0.1 mm closer (`BRD_BOTTOM_MOVE_GAIN_MM`), so
  *     a slider the file cannot see stays at the name's own starting number. Every move is made the way a drag makes it
  *     (`storeCutStation` and `keepStationsInOrder`, the moved one winning), and sits on its slider's own step and inside its
- *     own range, imported from the code that owns them.
+ *     own range, imported from the code that owns them. (This is the grid search: stage 6 then leaves the steps.)
  *  5. **Compares every other name** of each section with its sliders free too (an Egg's flat nose against a Reverse Vee
  *     nose, a Panel Vee against a double concave), then chooses: a cut that is not in the seed must bring the fit 0.25 mm
  *     closer (`BRD_BOTTOM_EXTRA_CUT_MM`) or the seed's names stay. Measured: at 0.1 mm a round trip gained a spurious 1/16" nose cut;
@@ -39,6 +39,18 @@
  *     instead (the Tri-Plane led by 0.55 and 0.09 mm), and so does quadtesting (0.86 mm; its vee tail is deeper than the
  *     Panel Vee reaches, so either centre cut stands in for it). A 7/16" or deeper Tri-Plane the app wrote itself still
  *     comes back as one, 1.5 to 2.85 mm clear.
+ *  6. **Polishes the chosen bottom** (quick 261116-tqs, the founder, 2026-11-16: "let the fit land anywhere", after asking for the
+ *     worst miss under half a millimetre). Stages 4 and 5 stay on BOTTOM's own steps (that grid chooses the names, and its rules
+ *     stand exactly as written above). Once the names and the order of rails and bottom are settled, `polishBrdBottom` moves
+ *     each fitted cut's Start, Deepest At, End, Depth and across marks (a single's Off Rail, a belly's and the Tri-Plane's Off
+ *     Stringer, a double's Trough At, Off Rail and Off Stringer) to whatever value brings the same score closest, between steps and
+ *     with no 0.1 mm bar, inside every control's own range. The numbers are stored as found; BOTTOM shows them rounded to its own
+ *     steps. Smoothness, Vee Lift and Closes to a point stay the name's own. It runs once, on the winning order's bottom only:
+ *     polished inside every one of a file's up to three bottom fits it changed which order won on the founder's longboard (its
+ *     bottom went from 2.39 to 3.65 mm). Measured through the real import on the founder's twelve files, the widest miss fell
+ *     from 1.04 to 0.49 mm (the Fryer), 0.95 to 0.55 (the Round Tail), 0.83 to 0.54 (the Groveler), 0.66 to 0.40 (SAtri) and
+ *     2.14 to 1.58 mm (92Log), and no file got worse. What stays out of reach is the model, not the search: a double inside a
+ *     vee tail, a belly across, a 29 mm vee past Depth's half inch, the wobble in a file's flat sections.
  *
  * **Between the file's sections.** An AkuShaper file holds only 3 to 5 usable sections, and a slider fitted to so few can fade
  * a cut in and out between two of them where nothing is measured (measured: a 7/16" nose concave fading from nothing to full
@@ -120,6 +132,18 @@ export const BRD_BOTTOM_MOVE_GAIN_MM: Mm = mm(0.1);
 export const BRD_BOTTOM_BLEND_MAX_IN = 6;
 /** A station slider is swept at this spacing first (inches), then at every slider step near the best. */
 export const BRD_BOTTOM_STATION_COARSE_IN = 4;
+/**
+ * The polish's first steps (quick 261116-tqs; each halves until it is `BRD_BOTTOM_POLISH_STOP` of itself): 1" for a station
+ * (twice BOTTOM's own 1/2" step), 1/32" for a depth (half its old 1/16" step) and 1/4" for an across mark (four 1/16" steps).
+ * Measured on the founder's twelve files: smaller first steps stalled in the first valley, larger ones cost time for no gain.
+ */
+export const BRD_BOTTOM_POLISH_STATION_IN = 1;
+export const BRD_BOTTOM_POLISH_DEPTH_IN = 1 / 32;
+export const BRD_BOTTOM_POLISH_MARK_IN = 1 / 4;
+/** The polish stops halving a step once it is this share of its first step (a thousandth: well under 0.01 mm on a station). */
+export const BRD_BOTTOM_POLISH_STOP = 1 / 1000;
+/** Nelder-Mead restarts after the coordinate search (measured: two found what the Round Tail and the Fryer needed). */
+export const BRD_BOTTOM_POLISH_RESTARTS = 2;
 /** An across mark is swept at this spacing first (inches), then at every 1/16" near the best. */
 export const BRD_BOTTOM_MARK_COARSE_IN = 1 / 4;
 /** A rising section whose height halfway across is under this share of its rise at the end reads as a belly, not a vee. */
@@ -131,6 +155,14 @@ const DEPTH_STEPS = Math.round(BOTTOM_DEPTH_RANGE_IN.max / BOTTOM_MARK_STEP_IN);
 const DEPTH_STEP_MM: Mm = inchesToMm(BOTTOM_MARK_STEP_IN);
 /** A move or a trial counts as closer only by more than this (rounding noise). */
 const NOISE = 1e-9;
+/** The polish's rounds of coordinate and pair steps, at most. */
+const POLISH_ROUNDS = 30;
+/** Repeats of one coordinate step in one direction while it keeps helping, at most. */
+const POLISH_RUN = 20;
+/** Nelder-Mead steps a restart, per slider, at most. */
+const POLISH_SIMPLEX_ITERATIONS = 400;
+/** A Nelder-Mead restart is done once its best and worst corners are this close (millimetres of score). */
+const POLISH_SIMPLEX_SPREAD = 1e-7;
 /** The neighbours (every other name of a section) refined in full: the three closest. */
 const FULL_NEIGHBOURS = 3;
 /** A section whose station is this much closer to a tip than the skipped inch is still kept: the file rounds a written 1". */
@@ -738,7 +770,181 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
     return { specs: { nose: s.nose.spec, center: s.center.spec, tail: s.tail.spec }, value: current };
   };
 
-  return { refine, valueOfSpecs };
+  /**
+   * The polish (quick 261116-tqs, the founder: "let the fit land anywhere"): the chosen cuts' sliders moved to whatever values
+   * bring the same score closest, between steps on every axis. It never changes a cut's name, and never moves a flat section.
+   * Per cut that is not flat: Start, Deepest At and End (as stations from the tail, each kept inside the board and the three
+   * kept in order the way a drag keeps them), Depth (1/16" to 1/2", the shallowest the grid chose among, so a polished cut never
+   * shrinks into one the name choice never weighed), and the across marks inside BOTTOM's own ranges: a single's Off Rail, a
+   * belly's and the Tri-Plane's Off Stringer, a double's Trough At, Off Rail and Off Stringer. Smoothness, Vee Lift, Closes to a
+   * point and By hand's two trough ends stay as they are.
+   *
+   * The search is a coordinate descent with repeats, then the neighbouring pairs moved together (the score is a largest-gap
+   * score, so a gain often needs two sliders to move at once), halving the steps until each is a thousandth of its first
+   * (`BRD_BOTTOM_POLISH_STOP`), then `BRD_BOTTOM_POLISH_RESTARTS` Nelder-Mead restarts. Every trial is scored by `value`, the
+   * fit's own score, one trial buffer per section because all three cuts can change in one trial. A trial counts when it is
+   * closer by more than rounding noise: there is no `BRD_BOTTOM_MOVE_GAIN_MM` bar here. Bounded: at most
+   * `POLISH_ROUNDS` rounds of at most `POLISH_RUN` repeats a coordinate and a direction, and at most
+   * `POLISH_SIMPLEX_ITERATIONS` x n Nelder-Mead steps a restart, n being at most 21 sliders. Never worse than `specs`:
+   * when no trial beats them, they come back untouched.
+   */
+  const polish = (specs: Specs): { specs: Specs; value: number } => {
+    const IN = inchesToMm(1);
+    const startValue = valueOfSpecs(specs);
+    type PolishField = "start" | "deepest" | "end" | "depth" | "offRail" | "offStringer" | "troughAt";
+    const fields: { key: BottomSectionKey; field: PolishField }[] = [];
+    for (const key of ["tail", "center", "nose"] as const) {
+      const kind = cutKind(specs[key].name);
+      if (kind === "flat" || specs[key].depth <= 0) continue;
+      for (const field of ["start", "deepest", "end", "depth"] as const) fields.push({ key, field });
+      const marks: PolishField[] =
+        kind === "double"
+          ? ["troughAt", "offRail", "offStringer"]
+          : kind === "single"
+            ? ["offRail"]
+            : kind === "belly" || specs[key].name === "Tri-Plane Hull Center"
+              ? ["offStringer"]
+              : [];
+      for (const field of marks) fields.push({ key, field });
+    }
+    if (fields.length === 0) return { specs, value: startValue };
+
+    const isStation = (f: PolishField): f is "start" | "deepest" | "end" => f === "start" || f === "deepest" || f === "end";
+    // Every value in inches: a station from the tail, a depth, a mark.
+    const x0 = fields.map(({ key, field }) => (isStation(field) ? resolveCut(key, specs[key], board)[field] : specs[key][field]) / IN);
+    const step0 = fields.map(({ field }) =>
+      isStation(field) ? BRD_BOTTOM_POLISH_STATION_IN : field === "depth" ? BRD_BOTTOM_POLISH_DEPTH_IN : BRD_BOTTOM_POLISH_MARK_IN,
+    );
+    const heldTo = (field: PolishField, inches: number): number => {
+      if (isStation(field)) return Math.min(L, Math.max(0, inches * IN));
+      if (field === "depth") return Math.min(BOTTOM_DEPTH_RANGE_IN.max * IN, Math.max(BOTTOM_MARK_STEP_IN * IN, inches * IN));
+      const range = BOTTOM_MARK_RANGES_IN[field];
+      return Math.min(range.max * IN, Math.max(range.min * IN, inches * IN));
+    };
+    const build = (x: readonly number[]): Specs => {
+      const out: Specs = { nose: specs.nose, center: specs.center, tail: specs.tail };
+      for (const key of ["tail", "center", "nose"] as const) {
+        let spec: BottomCutSpec | null = null;
+        fields.forEach(({ key: k, field }, i) => {
+          if (k !== key) return;
+          const at = heldTo(field, x[i]);
+          const base: BottomCutSpec = spec ?? { ...specs[key] };
+          spec = isStation(field) ? { ...base, ...storeCutStation(key, field, mm(at), board) } : { ...base, [field]: mm(at) };
+        });
+        if (spec) out[key] = keepStationsInOrder(key, spec, "deepest", board, "narrowest");
+      }
+      return out;
+    };
+
+    const states: Record<BottomSectionKey, CutState> = {
+      nose: keep(prepare("nose", specs.nose, null, newBuffers()), trialBuffers),
+      center: keep(prepare("center", specs.center, null, newBuffers()), trialBuffers),
+      tail: keep(prepare("tail", specs.tail, null, newBuffers()), trialBuffers),
+    };
+    const trialSet: Record<BottomSectionKey, Buffers> = { nose: newBuffers(), center: newBuffers(), tail: newBuffers() };
+    const score = (x: readonly number[]): number => {
+      const trial = build(x);
+      return value({
+        nose: prepare("nose", trial.nose, states.nose, trialSet.nose),
+        center: prepare("center", trial.center, states.center, trialSet.center),
+        tail: prepare("tail", trial.tail, states.tail, trialSet.tail),
+      });
+    };
+
+    let x = [...x0];
+    let best = score(x);
+    let step = [...step0];
+    for (let round = 0; round < POLISH_ROUNDS; round++) {
+      let improved = false;
+      for (let i = 0; i < x.length; i++) {
+        for (const dir of [1, -1]) {
+          for (let run = 0; run < POLISH_RUN; run++) {
+            const y = [...x];
+            y[i] += dir * step[i];
+            const v = score(y);
+            if (!(v < best - NOISE)) break;
+            best = v;
+            x = y;
+            improved = true;
+          }
+        }
+      }
+      // Neighbouring pairs together: a largest-gap score often needs two sliders to move at once.
+      for (let i = 0; i + 1 < x.length; i++) {
+        for (const a of [1, -1]) {
+          for (const b of [1, -1]) {
+            const y = [...x];
+            y[i] += a * step[i];
+            y[i + 1] += b * step[i + 1];
+            const v = score(y);
+            if (v < best - NOISE) {
+              best = v;
+              x = y;
+              improved = true;
+            }
+          }
+        }
+      }
+      if (!improved) {
+        step = step.map((q) => q / 2);
+        if (step.every((q, i) => q < BRD_BOTTOM_POLISH_STOP * step0[i])) break;
+      }
+    }
+
+    // Nelder-Mead restarts from the best found, each with a smaller starting simplex.
+    const n = x.length;
+    for (let restart = 0; restart < BRD_BOTTOM_POLISH_RESTARTS; restart++) {
+      let simplex = [x, ...x.map((_, i) => x.map((v, j) => (j === i ? v + step0[i] * 0.5 ** restart : v)))];
+      let vals = simplex.map(score);
+      for (let it = 0; it < POLISH_SIMPLEX_ITERATIONS * n; it++) {
+        const order = vals.map((_, i) => i).sort((a, b) => vals[a] - vals[b]);
+        simplex = order.map((i) => simplex[i]);
+        vals = order.map((i) => vals[i]);
+        if (vals[n] - vals[0] < POLISH_SIMPLEX_SPREAD) break;
+        const centroid = new Array<number>(n).fill(0);
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) centroid[j] += simplex[i][j] / n;
+        const along = (a: number) => centroid.map((c, j) => c + a * (simplex[n][j] - c));
+        const reflected = along(-1);
+        const reflectedValue = score(reflected);
+        if (reflectedValue < vals[0]) {
+          const expanded = along(-2);
+          const expandedValue = score(expanded);
+          if (expandedValue < reflectedValue) {
+            simplex[n] = expanded;
+            vals[n] = expandedValue;
+          } else {
+            simplex[n] = reflected;
+            vals[n] = reflectedValue;
+          }
+        } else if (reflectedValue < vals[n - 1]) {
+          simplex[n] = reflected;
+          vals[n] = reflectedValue;
+        } else {
+          const contracted = along(0.5);
+          const contractedValue = score(contracted);
+          if (contractedValue < vals[n]) {
+            simplex[n] = contracted;
+            vals[n] = contractedValue;
+          } else {
+            for (let i = 1; i <= n; i++) {
+              simplex[i] = simplex[i].map((v, j) => simplex[0][j] + 0.5 * (v - simplex[0][j]));
+              vals[i] = score(simplex[i]);
+            }
+          }
+        }
+      }
+      if (vals[0] < best) {
+        best = vals[0];
+        x = simplex[0];
+      }
+    }
+
+    // Never worse than what came in (the clamp to a control's own range can move a hand-written value).
+    if (!(best < startValue - NOISE)) return { specs, value: startValue };
+    return { specs: build(x), value: best };
+  };
+
+  return { refine, valueOfSpecs, polish };
 }
 
 /* ============ the whole fit ============ */
@@ -877,4 +1083,27 @@ export function measureBrdBottom(bottom: BoardBottom, sections: readonly BrdBott
 export function brdStringerLift(bottom: BoardBottom, board: BottomBoard): (station: Mm) => Mm {
   const resolved = resolveBottom(bottom, board);
   return (station) => sectionsFoamOff(resolved, board, station, mm(0));
+}
+
+/**
+ * The chosen bottom polished at any value (quick 261116-tqs): the same scorer the fit used, over the same read sections and
+ * blends (`sections` are the fit's own, which carry the windows they were read at), with every cut's sliders free to land
+ * between their steps. Names are never changed; channels and wings are untouched. `board0` is the board the fit was made on
+ * (`brdFittedBottomBoard`), so Deepest At is stored from the same fins.
+ *
+ * The search is scored the fit's way, which reads a nearly flat section (every gap within `BRD_BOTTOM_FLAT_MM`) as exactly flat
+ * so a file's rounding never invents a concave. The figure a shaper is shown is measured against the file's own bottom instead,
+ * so a polished bottom is kept only when that shown figure (the widest miss plus the typical one, as the fit scores) is no worse
+ * than the grid answer's. Measured: the founder's twelve files all pass; a file the app wrote itself, whose grid answer is
+ * already within 0.02 mm, would otherwise have been pulled to 0.39 mm by the flat reading, and it now comes back as it was.
+ */
+export function polishBrdBottom(bottom: BoardBottom, sections: readonly BrdBottomSection[], board0: BottomBoard): BoardBottom {
+  const scorer = brdBottomScorer(board0, brdBottomBlends(sections));
+  const { specs } = scorer.polish({ nose: bottom.nose, center: bottom.center, tail: bottom.tail });
+  const polished = { ...bottom, nose: specs.nose, center: specs.center, tail: specs.tail };
+  const shown = (b: BoardBottom): number => {
+    const { largest, typical } = measureBrdBottom(b, sections, board0).closeness;
+    return largest + typical;
+  };
+  return shown(polished) <= shown(bottom) + NOISE ? polished : bottom;
 }

@@ -46,6 +46,7 @@ import {
   brdBottomFrames,
   brdBottomRows,
   brdFitLook,
+  brdFitLookGrid,
   brdRailFrames,
   brdRailRows,
   RAIL_DRAWING_TALLEST,
@@ -1219,7 +1220,10 @@ describe("brdFitLook fits the fins first, then the bottom and the rails on the b
     const onNew = brdRailBoard(twin.fit, twin.bottom!.bottom);
     const at = (b: ReturnType<typeof brdRailBoard>, inches: number) => JSON.stringify(brdOurRailHalf(b, DEFAULT_RAIL_BAND_SPEC, mm(inchesToMm(inches))));
     // somewhere along the tail the two boards' bottoms part (the fins stand 2" apart), so their finished rails do
-    expect([1, 2, 3, 4, 6, 8, 10, 12].some((inches) => at(onFins, inches) !== at(onNew, inches))).toBe(true);
+    // (the polished Panel Vee's End can sit past 12", so every inch from the tail to the tail cut's Start is probed)
+    const tailCutStart = resolveCut("tail", twin.bottom!.bottom.tail, brdFittedBottomBoard(twin.fit, twin.fins!.spec)).start;
+    const probes = Array.from({ length: Math.max(1, Math.floor(tailCutStart / inchesToMm(1))) }, (_, k) => k + 1);
+    expect(probes.some((inches) => at(onFins, inches) !== at(onNew, inches))).toBe(true);
     expect(onFins.length).toBe(twin.fit.outline.length);
     // and with no fins argument a rail board is a new board's, as it always was
     expect(at(brdRailBoard(twin.fit, twin.bottom!.bottom, undefined), 4)).toBe(at(onNew, 4));
@@ -1381,5 +1385,57 @@ describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
       expect(a[0]).toBeLessThanOrEqual(180 + 1e-9);
       expect(b[0]).toBeGreaterThanOrEqual(-1e-9);
     }
+  });
+});
+
+describe("brdFitLook finishes with the polish, and settles everything else exactly as before (quick 261116-tqs, D-01, D-08)", () => {
+  /** The stock Shortboard written with a Deep Single Concave whose numbers sit on none of BOTTOM's steps, read back. */
+  const offGridFile = (() => {
+    const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+    const g = buildOutline(f.outline);
+    const p = designSideProfile(f, LIVE_DESIGN_RULES);
+    const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+    const board0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
+    const base = startingCut("center", "Deep Single Concave", board0);
+    const bottom = { ...structuredClone(DEFAULT_BOTTOM), center: { ...base, depth: inchesToMm(0.19), offRail: inchesToMm(1.37), deepest: mm(base.deepest + inchesToMm(1.3)) } };
+    const s = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: board0 }), geometry: g, rockerAt: p.rockerAt });
+    const back = readAnyBrd(Uint8Array.from(brdText(s, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text, (ch) => ch.charCodeAt(0)));
+    if (!back.ok) throw new Error("the app's own file would not read");
+    return back.board;
+  })();
+  const files: [string, ReadBrdBoard][] = [
+    ["a twin-fin Shortboard with a Panel Vee tail", withFins(TWIN, "Futures")],
+    ["a Shortboard with a Deep Single Concave written off every step", offGridFile],
+  ];
+
+  it.each(files)("%s: the bottom's names, the rails' order and every rail's Family and boxes equal the grid look's, and the bottom is no further off", (_name, file) => {
+    const grid = brdFitLookGrid(file);
+    const out = brdFitLook(file);
+    expect(out.bottom).not.toBeNull();
+    for (const key of ["nose", "center", "tail"] as const) expect(out.bottom!.bottom[key].name).toBe(grid.bottom!.bottom[key].name);
+    expect(out.bottom!.closeness.largest + out.bottom!.closeness.typical).toBeLessThanOrEqual(grid.bottom!.closeness.largest + grid.bottom!.closeness.typical + 1e-9);
+    expect(out.rails!.order).toBe(grid.rails!.order);
+    for (const key of ["nose", "center", "tail"] as const) {
+      const a = out.rails!.settings[key];
+      const b = grid.rails!.settings[key];
+      expect([a.family, a.symmetrical, a.singleTuck, a.sharpBottomTuck, a.hardEdge]).toEqual([b.family, b.symmetrical, b.singleTuck, b.sharpBottomTuck, b.hardEdge]);
+    }
+    // the fins and the outline are the grid look's: the polish touches only the bottom, the stringer's refit and the rails
+    expect(out.fins).toEqual(grid.fins);
+    expect(out.fit.outline).toEqual(grid.fit.outline);
+  });
+
+  it("the polished look's bottom is measured on the board that opens, and its rails on that bottom", () => {
+    const out = brdFitLook(files[0][1]);
+    const onOpens = brdFittedBottomBoard(out.fit, out.fins!.spec);
+    const measured = measureBrdBottom(out.bottom!.bottom, out.bottom!.sections, onOpens);
+    expect(measured.closeness.largest).toBeCloseTo(out.bottom!.closeness.largest, 9);
+    const rails = brdRailBoard(out.fit, out.bottom!.bottom, out.fins!.spec);
+    expect(rails.length).toBe(out.fit.outline.length);
+  });
+
+  it("a file with no usable section has no bottom to polish, and the look is the grid look", () => {
+    const empty = { ...board, sections: [] };
+    expect(brdFitLook(empty)).toEqual(brdFitLookGrid(empty));
   });
 });

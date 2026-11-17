@@ -25,6 +25,8 @@ import {
   resolveBottom,
   resolveCut,
   stationFromNearestTip,
+  type BoardBottom,
+  type BottomBoard,
   type BottomCutSpec,
   type BottomSectionKey,
 } from "../geometry/bottom";
@@ -33,6 +35,7 @@ import {
   brdStringerLift,
   fitBottomToBrd,
   measureBrdBottom,
+  polishBrdBottom,
   type BrdBottomFit,
   type BrdBottomSection,
 } from "../geometry/brd-bottom";
@@ -154,14 +157,32 @@ function bottomOn(
   const board0 = brdFittedBottomBoard(first, fins);
   const found = fitBottomToBrd(board.sections, board0, windows);
   if (!found) return null;
-  const lift = brdStringerLift(found.bottom, board0);
+  return liftedStep(board, lines, first, fins, board0, found.bottom, found.sections);
+}
+
+/**
+ * A chosen bottom made into a step: where a concave lifts the stringer anywhere, the rocker and foil are fitted again to the
+ * file's stringer less that lift; under a flat, vee or belly the first fit stands untouched. The bottom is then measured on
+ * the board that opens. One helper for the grid answer and for the polished one (quick 261116-tqs), so a polished bottom is
+ * lifted and measured exactly as the grid one is.
+ */
+function liftedStep(
+  board: ReadBrdBoard,
+  lines: FitLines,
+  first: BrdFit,
+  fins: FinPlacementSpec | undefined,
+  board0: BottomBoard,
+  chosen: BoardBottom,
+  sections: readonly BrdBottomSection[],
+): BottomStep {
+  const lift = brdStringerLift(chosen, board0);
   let lifted = false;
   for (let i = 0; i <= LIFT_PROBES && !lifted; i++) if (lift(mm((board0.length * i) / LIFT_PROBES)) > 0) lifted = true;
-  if (!lifted) return { fit: first, bottom: measureBrdBottom(found.bottom, found.sections, board0), planedBottom: board.bottom };
+  if (!lifted) return { fit: first, bottom: measureBrdBottom(chosen, sections, board0), planedBottom: board.bottom };
   const fit = fitBoardToBrd(lines, lift, first);
   return {
     fit,
-    bottom: measureBrdBottom(found.bottom, found.sections, brdFittedBottomBoard(fit, fins)),
+    bottom: measureBrdBottom(chosen, sections, brdFittedBottomBoard(fit, fins)),
     planedBottom: board.bottom.map(([x, y]): P2 => [x, y - lift(mm(x))]),
   };
 }
@@ -199,8 +220,10 @@ export function brdRailLines(board: ReadBrdBoard): { lines: BrdRailLine[]; index
  *
  * The stringer is never moved by the rails: the rocker and thickness are fitted to the file's stringer before the rails exist,
  * and only the bottom's concaves plan the board lower (the founder's rule above).
+ *
+ * This is the look before the polish (`brdFitLook` finishes it): every name, the order and every rail Family are settled here.
  */
-export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
+function settleLook(board: ReadBrdBoard): { look: BrdFitLook; first: BrdFit; lines: FitLines } {
   const lines = { length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck };
   const first = fitBoardToBrd(lines);
   // The fins come first (quick 261113-qyz): a tail cut's Deepest At is stored from the front fins, so a bottom fitted on a
@@ -209,11 +232,12 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const finsFit = fitBrdFins(board.fins, board.outline, first.outline);
   const fins = finsFit?.spec;
   const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom, rails: null, fins: finsFit };
-  if (board.sections.length === 0) return none;
+  const settled = (look: BrdFitLook) => ({ look, first, lines });
+  if (board.sections.length === 0) return settled(none);
   const asRead = bottomOn(board, lines, first, fins);
-  if (!asRead) return none;
+  if (!asRead) return settled(none);
   const { lines: railLines, index } = brdRailLines(board);
-  if (railLines.length === 0) return { ...asRead, board, rails: null, fins: finsFit };
+  if (railLines.length === 0) return settled({ ...asRead, board, rails: null, fins: finsFit });
 
   const stations = railLines.map((line) => line.station);
   const sectionWindows = (windows: readonly (Mm | undefined)[]): (Mm | undefined)[] => {
@@ -243,21 +267,55 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const whole = brdRailWholeValue(railLines, onBoard(current), bottomFirst.rails);
   const kinds = BOTTOM_KEYS.map((key) => cutKind(current.bottom.bottom[key].name));
   const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst, fins: finsFit };
-  if (!(whole.largest > BRD_RAIL_FIRST_TRY_MM) || !kinds.some((kind) => kind === "vee" || kind === "belly")) return result;
+  if (!(whole.largest > BRD_RAIL_FIRST_TRY_MM) || !kinds.some((kind) => kind === "vee" || kind === "belly")) return settled(result);
 
   // Rails first, on a flat bottom.
   const flat = brdRailBoard(first, null, fins);
   const flatSettings = fitBrdRails(railLines, flat);
   const flatWindows = brdRailWindows(railLines, brdRailBegins(first, brdRailsSpec(flatSettings, flat.foil), stations));
-  if (!flatWindows.narrowed) return result;
+  if (!flatWindows.narrowed) return settled(result);
   const railsFirst = bottomOn(board, lines, first, fins, sectionWindows(flatWindows.windows));
-  if (!railsFirst) return result;
+  if (!railsFirst) return settled(result);
   const polished = fitBrdRails(railLines, onBoard(railsFirst), flatSettings);
   const blendFirst = fitBrdTailBlend(railLines, onBoard(railsFirst), polished);
   const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true, blend: blendFirst });
   const wholeFirst = brdRailWholeValue(railLines, onBoard(railsFirst), measured.rails);
-  if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return result;
-  return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured, fins: finsFit };
+  if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return settled(result);
+  return settled({ board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured, fins: finsFit });
+}
+
+/**
+ * The look as it stood before the polish: the bottom's sliders on BOTTOM's own steps. Exported for the tests, which hold the
+ * polished look to this one (names, order and every rail Family equal; the bottom no further off); nothing else should call it.
+ */
+export function brdFitLookGrid(board: ReadBrdBoard): BrdFitLook {
+  return settleLook(board).look;
+}
+
+/**
+ * The whole look, finished with the polish (quick 261116-tqs, the founder: "let the fit land anywhere"). Everything above is
+ * settled first, exactly as it always was: the names, the rails-first or bottom-first order, the Family of every rail. Then,
+ * from the winning order's bottom only, the cuts' sliders are polished to whatever values fit closest, between steps
+ * (`polishBrdBottom`). Polishing inside every bottom fit instead (up to three a file) changed which order won on the founder's
+ * longboard, so the polish runs once, last. A polished concave lifts the stringer by a slightly different amount, so the board
+ * is refitted to the file's stringer as the grid answer was; the rails are then fitted again on that board from where they stood
+ * (Family and boxes held, the tail blend kept as fitted) and measured, because the rails measured without that refit came out
+ * worse on the Fryer. A look with no rails takes only the polished bottom.
+ */
+export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
+  const { look, first, lines } = settleLook(board);
+  if (!look.bottom) return look;
+  const fins = look.fins?.spec;
+  const board0 = brdFittedBottomBoard(first, fins);
+  const polished = polishBrdBottom(look.bottom.bottom, look.bottom.sections, board0);
+  const step = liftedStep(board, lines, first, fins, board0, polished, look.bottom.sections);
+  if (!look.rails) return { ...look, ...step };
+  const { lines: railLines } = brdRailLines(board);
+  const onBoard = brdRailBoard(step.fit, step.bottom.bottom, fins);
+  const winner = look.rails;
+  const settings = fitBrdRails(railLines, onBoard, winner.settings);
+  const rails = measureBrdRails(railLines, onBoard, settings, { order: winner.order, read: winner.read, narrowed: winner.narrowed, blend: winner.blend });
+  return { ...look, ...step, rails };
 }
 
 /** The top and side views laid out for a box this wide, nose at the left, one scale along the board. */
