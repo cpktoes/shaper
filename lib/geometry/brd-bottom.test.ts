@@ -11,6 +11,7 @@ import { bottomStationSlider } from "./blank-reasons";
 import { buildBoardSurface } from "./board-surface";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_DEPTH_RANGE_IN,
   BOTTOM_MARK_RANGES_IN,
   BOTTOM_MARK_STEP_IN,
   DEFAULT_BOTTOM,
@@ -45,6 +46,7 @@ import {
   chooseBrdBottom,
   fitBottomToBrd,
   measureBrdBottom,
+  polishBrdBottom,
   readBrdBottom,
   type BrdBottomSection,
   type BrdBottomTarget,
@@ -693,5 +695,120 @@ describe("the Tri-Plane Hull Center is reached for last, and a belly carries a f
     });
     const { found } = fitText(source.write(bottom));
     expect(found.bottom.center.name).toBe("Tri-Plane Hull Center");
+  }, LONG);
+});
+
+describe("the polish: the chosen bottom's sliders land at any value, names held (quick 261116-tqs, D-01, D-03, D-11)", () => {
+  const I = inchesToMm;
+  const board = SHORT.board;
+  const KEYS = ["nose", "center", "tail"] as const;
+
+  /** Sections exactly `bottom`'s at 40 stations, less than 6" apart so the fit adds no blends: the file's bottom IS it. */
+  function exact(bottom: BoardBottom): BrdSectionLine[] {
+    const resolved = resolveBottom(bottom, board);
+    return Array.from({ length: 40 }, (_, k) => 0.03 + (0.94 * k) / 39).map((share) => {
+      const station = mm(share * board.length);
+      const reach = board.railAt(station) / BRD_BOTTOM_WINDOW;
+      const at0 = sectionsFoamOff(resolved, board, station, mm(0));
+      const run = Array.from({ length: 61 }, (_, k): P2 => {
+        const x = (reach * k) / 60;
+        return [x, sectionsFoamOff(resolved, board, station, mm(x)) - at0];
+      });
+      return { station, points: [...run, [reach, run[60][1] + 20], [0, run[60][1] + 40]] };
+    });
+  }
+
+  /** The fit's grid answer for a file written as `wanted`, and the same bottom polished. */
+  function both(wanted: BoardBottom) {
+    const lines = exact(wanted);
+    const grid = fitBottomToBrd(lines, board)!;
+    const polished = polishBrdBottom(grid.bottom, grid.sections, board);
+    const scorer = brdBottomScorer(board, brdBottomBlends(grid.sections));
+    const valueOf = (b: BoardBottom) => scorer.valueOfSpecs({ nose: b.nose, center: b.center, tail: b.tail });
+    return { grid, polished, valueOf, measured: measureBrdBottom(polished, grid.sections, board) };
+  }
+
+  /** A cut written with numbers that sit on none of BOTTOM's steps. */
+  const offGrid = (key: BottomSectionKey, name: BottomCutName, tail?: BottomCutName): BottomCutSpec => {
+    let spec: BottomCutSpec = { ...startingCut(key, name, board, tail), depth: I(0.11) };
+    spec = { ...spec, ...storeCutStation(key, "start", I(37.3), board) };
+    spec = { ...spec, ...storeCutStation(key, "deepest", I(key === "tail" ? 17.7 : 21.7), board) };
+    spec = { ...spec, ...storeCutStation(key, "end", I(5.4), board) };
+    if (spec.offRail > 0) spec = { ...spec, offRail: I(1.37) };
+    return keepStationsInOrder(key, spec, "deepest", board, "narrowest");
+  };
+
+  const CASES: [string, BoardBottom][] = [
+    ["a Deep Single Concave", withCuts({ center: { ...startingCut("center", "Deep Single Concave", board), depth: I(4 / 16) } })],
+    ["a Double Concave Exit", withCuts({ tail: { ...startingCut("tail", "Double Concave Exit", board), depth: I(3 / 16) } })],
+    ["a Panel Vee", withCuts({ tail: { ...startingCut("tail", "Panel Vee", board), depth: I(3 / 16) } })],
+    ["a Continuous Belly with a panel", withCuts({ center: { ...startingCut("center", "Continuous Belly / Rolled Mid", board), depth: I(3 / 8), offStringer: I(1.5) } })],
+    ["a Teardrop Nose Concave", withCuts({ nose: { ...startingCut("nose", "Teardrop Nose Concave", board), depth: I(1 / 4) } })],
+  ];
+
+  it.each(CASES)("%s: the names are the grid answer's, and the polish is never farther off by the fit's own score or the widest miss", (_n, wanted) => {
+    const { grid, polished, valueOf, measured } = both(wanted);
+    for (const key of KEYS) expect(polished[key].name).toBe(grid.bottom[key].name);
+    expect(valueOf(polished)).toBeLessThanOrEqual(valueOf(grid.bottom) + 1e-9);
+    expect(measured.closeness.largest).toBeLessThanOrEqual(grid.closeness.largest + 1e-6);
+    expect(polished.channels).toEqual(grid.bottom.channels);
+    expect(polished.wingRule).toBe(grid.bottom.wingRule);
+  }, LONG);
+
+  it("a Deep Single Concave written off every step: the grid answer misses, the polished one misses by strictly less", () => {
+    const wanted = withCuts({ center: offGrid("center", "Deep Single Concave") });
+    const { grid, polished, measured } = both(wanted);
+    expect(grid.closeness.largest).toBeGreaterThan(0);
+    expect(measured.closeness.largest).toBeLessThan(grid.closeness.largest);
+    expect(polished.center.name).toBe(grid.bottom.center.name);
+  }, LONG);
+
+  it("a Double Concave Exit and a Panel Vee written off every step: the polished bottom misses by strictly less than the grid's", () => {
+    for (const [key, name] of [["tail", "Double Concave Exit"], ["tail", "Panel Vee"]] as const) {
+      const { grid, measured } = both(withCuts({ [key]: offGrid(key, name) }));
+      expect(grid.closeness.largest).toBeGreaterThan(0);
+      expect(measured.closeness.largest).toBeLessThan(grid.closeness.largest);
+    }
+  }, LONG);
+
+  it("every polished value is inside its own control's range, the stations are in order, a flat is untouched, and Smoothness, Vee Lift and Closes to a point are the grid answer's", () => {
+    const wanted = withCuts({ center: offGrid("center", "Deep Single Concave"), tail: offGrid("tail", "Double Concave Exit") });
+    const { grid, polished } = both(wanted);
+    expect(polished.nose).toEqual(grid.bottom.nose);
+    for (const key of KEYS) {
+      const spec = polished[key];
+      if (cutKind(spec.name) === "flat") continue;
+      const was = grid.bottom[key];
+      expect(spec.smoothness).toBe(was.smoothness);
+      expect(spec.veeLift).toBe(was.veeLift);
+      expect(spec.closesToPoint).toBe(was.closesToPoint);
+      const r = resolveCut(key, spec, board);
+      for (const field of ["start", "deepest", "end"] as const) {
+        expect(r[field]).toBeGreaterThanOrEqual(0);
+        expect(r[field]).toBeLessThanOrEqual(board.length);
+      }
+      expect(r.start).toBeGreaterThanOrEqual(r.deepest - 1e-9);
+      expect(r.deepest).toBeGreaterThanOrEqual(r.end - 1e-9);
+      expect(mmToInches(spec.depth)).toBeGreaterThanOrEqual(BOTTOM_MARK_STEP_IN - 1e-9);
+      expect(mmToInches(spec.depth)).toBeLessThanOrEqual(BOTTOM_DEPTH_RANGE_IN.max + 1e-9);
+      for (const field of ["offRail", "offStringer", "troughAt"] as const) {
+        expect(mmToInches(spec[field])).toBeGreaterThanOrEqual(Math.min(BOTTOM_MARK_RANGES_IN[field].min, mmToInches(was[field])) - 1e-9);
+        expect(mmToInches(spec[field])).toBeLessThanOrEqual(BOTTOM_MARK_RANGES_IN[field].max + 1e-9);
+      }
+    }
+  }, LONG);
+
+  it("a double's Off Stringer moves in the polish, and the refine's own mark lists still leave it where the name started", () => {
+    const wanted = withCuts({ tail: { ...startingCut("tail", "Double Concave Exit", board), depth: I(3 / 16), offStringer: I(0.25) } });
+    const { grid, polished } = both(wanted);
+    expect(grid.bottom.tail.name).toBe("Double Concave Exit");
+    // The grid answer is the name's own 3/4", the polish brings it nearer the written 1/4".
+    expect(grid.bottom.tail.offStringer).toBeCloseTo(startingCut("tail", "Double Concave Exit", board).offStringer, 9);
+    expect(Math.abs(polished.tail.offStringer - I(0.25))).toBeLessThan(Math.abs(grid.bottom.tail.offStringer - I(0.25)));
+  }, LONG);
+
+  it("a bottom of three flat cuts comes back as it went in", () => {
+    const flat = fitBottomToBrd(exact(DEFAULT_BOTTOM), board)!;
+    expect(polishBrdBottom(flat.bottom, flat.sections, board)).toEqual(flat.bottom);
   }, LONG);
 });

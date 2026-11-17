@@ -12,6 +12,8 @@ import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-r
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_MARK_RANGES_IN,
+  BOTTOM_DEPTH_STEP_IN,
+  BOTTOM_DEPTH_STEP_MM,
   BOTTOM_MARK_STEP_IN,
   BOTTOM_SECTIONS,
   CHANNEL_ANGLE_MAX,
@@ -37,7 +39,7 @@ import {
 import type { BottomCutKey } from "@/lib/geometry/bottom-draw";
 import { formatChannelAngle } from "@/lib/geometry/bottom-print";
 import { bottomImportedReadout } from "@/lib/geometry/imported-readout";
-import { formatDim, formatMark, formatMarkOrLess, measureSlider } from "@/lib/geometry/measure-display";
+import { formatBottomDepth, formatDim, formatMark, formatMarkOrLess, measureSlider } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 import { placedWings } from "@/lib/geometry/wings";
 import { cn } from "@/lib/utils";
@@ -827,8 +829,8 @@ function ChannelStationRow({
 
 /** A mark slider's right-hand hint: the slider's own maximum, written as a mark — never a separately formatted bound,
  * so Metric's Depth reads `12 mm` under a slider that stops at 12 (UI-SPEC § Already done). */
-function maxHint(view: { max: number; toMm: (v: number) => Mm }, system: UnitsSystem): string {
-  return formatMark(view.toMm(view.max), system);
+function maxHint(view: { max: number; toMm: (v: number) => Mm }, system: UnitsSystem, field?: MarkField): string {
+  return field === "depth" ? formatBottomDepth(view.toMm(view.max), system) : formatMark(view.toMm(view.max), system);
 }
 
 /**
@@ -850,10 +852,14 @@ function MarkRow({
   onChange: (value: Mm) => void;
 }) {
   const row = MARK_ROWS[field];
-  const slider = measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
-  // A depth or a lift that is there never reads as nothing (the founder, 2026-11-10): one too small for the tape — only
-  // a board file made outside the app can hold it, the slider steps by a whole sixteenth — reads `<1/16"`, not `0"`.
-  const mark = field === "depth" || field === "veeLift" ? formatMarkOrLess(value, system) : formatMark(value, system);
+  // A Depth steps 1/64" (0.1 mm in Metric) and reads to it (quick 261116-tqs, D-09); every other mark steps 1/16" (1 mm).
+  const slider =
+    field === "depth"
+      ? measureSlider(value, row.rangeIn, BOTTOM_DEPTH_STEP_IN, BOTTOM_DEPTH_STEP_MM, system)
+      : measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
+  // A depth or a lift that is there never reads as nothing (the founder, 2026-11-10): one too small for the tape reads
+  // `<1/64"` (`<0.1 mm`) for a depth, `<1/16"` (`<1 mm`) for a lift, not `0"`.
+  const mark = field === "depth" ? formatBottomDepth(value, system) : field === "veeLift" ? formatMarkOrLess(value, system) : formatMark(value, system);
   const words = row.words ? row.words(mark) : mark;
   return (
     <SliderRow
@@ -864,7 +870,7 @@ function MarkRow({
       max={slider.max}
       step={slider.step}
       leftHint={row.leftHint}
-      rightHint={row.leftHint ? maxHint(slider, system) : undefined}
+      rightHint={row.leftHint ? maxHint(slider, system, field) : undefined}
       sliderLabel={name}
       sliderValueText={words}
       onValueChange={(v) => onChange(slider.toMm(v))}

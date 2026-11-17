@@ -150,6 +150,17 @@ export function roundToWholeMm(value: Mm): Mm {
 }
 
 /**
+ * Snaps a millimetre value to the nearest tenth of a millimetre: the Metric step of a BOTTOM depth (quick 261116-tqs, D-09, the
+ * founder, 2026-11-16: "1/64" (or .1mm) for depth"), the one family of mark finer than the whole-millimetre house rule. Uses the
+ * same signed epsilon nudge as `roundToWholeMm` and `formatTenthMm`, so `formatTenthMm(roundToTenthMm(v))` always equals
+ * `formatTenthMm(v)`.
+ */
+export function roundToTenthMm(value: Mm): Mm {
+  const nudge = value < 0 ? -1e-9 : 1e-9;
+  return mm(Math.round((value + nudge) * 10) / 10);
+}
+
+/**
  * Which family a design number belongs to (D-01, extending Phase 5 D-02): **dims** — a board's
  * length, widths and headline thickness, the numbers a shaper quotes as a size — read in
  * centimetres to one decimal; **marks** — rail band marks, rocker heights, the five foil station
@@ -281,7 +292,7 @@ export function cubicInchesToCubicMm(volumeIn3: number): number {
  */
 export function formatInchesFraction(
   value: Mm,
-  denominator: 8 | 16 | 32 = 16,
+  denominator: 8 | 16 | 32 | 64 = 16,
 ): string {
   const inches = mmToInches(value);
   const sign = inches < 0 ? "-" : "";
@@ -324,7 +335,7 @@ export function formatInchesFraction(
  */
 export function formatSignedInchesFraction(
   value: Mm,
-  denominator: 8 | 16 | 32 = 16,
+  denominator: 8 | 16 | 32 | 64 = 16,
 ): string {
   // The sign is decided by what was PRINTED, not by the raw value. `formatInchesFraction` takes
   // its own sign from the input before rounding, so a value a hair below zero comes back as
@@ -355,6 +366,27 @@ const NOTHING_THERE: Mm = mm(1e-9);
 export function formatInchesFractionOrLess(value: Mm): string {
   const printed = formatInchesFraction(value);
   return value > NOTHING_THERE && printed === '0"' ? '<1/16"' : printed;
+}
+
+/**
+ * `formatInchesFractionOrLess` at the 1/64" a BOTTOM depth reads to (quick 261116-tqs, D-09, the founder, 2026-11-16: "1/64" (or .1mm)
+ * for depth"): the nearest 1/64" as a reduced fraction (`3/64"`, `1/8"`, `1 1/32"`), and a size above nothing that would round to
+ * `0"` reads `<1/64"`. A depth that sits on a 1/16" step reads exactly as `formatInchesFractionOrLess` reads it. For sizes, not
+ * signed offsets.
+ */
+export function formatInchesFractionOrLessFine(value: Mm): string {
+  const printed = formatInchesFraction(value, 64);
+  return value > NOTHING_THERE && printed === '0"' ? '<1/64"' : printed;
+}
+
+/**
+ * The Metric counterpart of `formatInchesFractionOrLessFine`: a depth to a tenth of a millimetre, bare like `formatTenthMm`
+ * (the caller adds `mm` where the value carries its own unit), and a size above nothing that would round to `0.0` reads `<0.1`.
+ * An actual zero still reads `0.0`.
+ */
+export function formatTenthMmOrLess(value: Mm): string {
+  const printed = formatTenthMm(value);
+  return value > NOTHING_THERE && printed === "0.0" ? "<0.1" : printed;
 }
 
 /**

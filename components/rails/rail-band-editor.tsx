@@ -62,6 +62,7 @@ export function RailBandEditor() {
     // RAILS draws and tables the rail the bottom leaves (Phase 17, D-22, D-35, D-41): the very `railBands` while no
     // vee or belly lifts a rail. The sliders below still read and write the shaper's own thicknesses (`effectiveRails`).
     railBandsOnBottom: bands,
+    railDomeNudgeTop,
     outline,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
@@ -310,6 +311,7 @@ export function RailBandEditor() {
             importedSpec={railsOnBottom}
             importedFromBottom={railsOnBottom !== effectiveRails}
             bands={bands}
+            railDomeNudgeTop={railDomeNudgeTop}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
             onChangeHardEdgeBlendsFrom={setTailHardEdgeBlendsFrom}

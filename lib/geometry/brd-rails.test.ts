@@ -51,6 +51,7 @@ import {
   hardEdgeEndsAt,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
+  domedDeckBandNudgeTop,
   RAIL_NUDGE_STEP_IN,
   RAIL_RATIO_RANGE,
   RAIL_SCALE_RANGE,
@@ -382,6 +383,15 @@ describe("round trips: boards with known rails come back from the whole look", (
           }
           if (key === "tail" && s.hardEdge) expect(rails.rails.tail.symmetrical || rails.rails.tail.singleTuck || rails.rails.tail.sharpBottomTuck).toBe(false);
           if (key !== "tail") expect(s.hardEdge).toBe(false);
+        }
+      });
+
+      it("never sets a Domed Deck Band past the stringer at its anchor: from -2\" up to the section's own top (quick 261116-tqs, D-06)", () => {
+        for (const key of ["nose", "center", "tail"] as const) {
+          const top = domedDeckBandNudgeTop(board.input.halfWidthAt(board.anchors[key]), board.foil[key === "nose" ? "nose12" : key === "tail" ? "tail12" : "center"]);
+          const inches = mmToInches(rails.settings[key].nudges.domedDeckBand);
+          expect(inches).toBeGreaterThanOrEqual(-RAIL_NUDGE_LIMIT_IN.domedDeckBand - 1e-9);
+          expect(inches).toBeLessThanOrEqual(top + 1e-9);
         }
       });
 

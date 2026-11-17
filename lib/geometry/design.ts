@@ -40,7 +40,7 @@ import { foilStationPoints, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline, tailCutStation } from "./outline";
-import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
+import { computeRailBands, domedDeckBandNudgeTop, type RailBandSpec, type RailBandsOutput, type RailSectionKey } from "./rail-bands";
 import { railSectionBottom } from "./rail-bottom";
 import { curveHalfWidthAt, narrowestOutlineAt, outlineForFins, wingShareAt } from "./wings";
 import { resolveWingStations } from "./wing-lock";
@@ -315,6 +315,34 @@ export function railAnchorStations(foil: FoilSpec, length: Mm): RailAnchorStatio
   const points = foilStationPoints(foil, length);
   const at = (key: string) => points.find((p) => p.key === key)!.station;
   return { tail: at("tail12"), center: at("center"), nose: at("nose12") };
+}
+
+/**
+ * The top of each RAILS section's Domed Deck Band slider (quick 261116-tqs, D-04): the nudge that puts the dome at the
+ * stringer at that section (`domedDeckBandNudgeTop`), from the foam's half-width at the section's anchor station
+ * (`foamHalfWidth`, the width the rail is cut into) and the section's board thickness as RAILS shows it (`rails` is the one
+ * `railsOnTheBottom` hands RAILS, so a vee's or belly's thinner rail raises its top, exactly as its readout draws it). In inches.
+ */
+export function railDomeNudgeTops(
+  geometry: OutlineGeometry,
+  anchors: RailAnchorStations,
+  rails: RailBandSpec,
+): Record<RailSectionKey, number> {
+  const top = (key: RailSectionKey) => domedDeckBandNudgeTop(foamHalfWidth(geometry, anchors[key]), rails[key].boardThickness);
+  return { nose: top("nose"), center: top("center"), tail: top("tail") };
+}
+
+/**
+ * How far in from the rail the stringer stands at each RAILS section (quick 261116-tqs, D-12): the foam's half-width at the
+ * section's anchor station (`foamHalfWidth`). RAILS' plots stop there and draw the stringer; the Domed Deck Band's slider
+ * reaches it. Millimetres.
+ */
+export function railStringerDistances(geometry: OutlineGeometry, anchors: RailAnchorStations): Record<RailSectionKey, Mm> {
+  return {
+    nose: foamHalfWidth(geometry, anchors.nose),
+    center: foamHalfWidth(geometry, anchors.center),
+    tail: foamHalfWidth(geometry, anchors.tail),
+  };
 }
 
 /**

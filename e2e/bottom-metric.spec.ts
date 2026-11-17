@@ -44,7 +44,7 @@ import {
   type DesignSummaryFields,
 } from "../lib/geometry/design";
 import { bottomImportedReadout } from "../lib/geometry/imported-readout";
-import { columnUnitSuffix, formatDim, formatDimBare, formatLength, formatMark, formatMarkBare, formatMarkOrLessBare, measureSlider } from "../lib/geometry/measure-display";
+import { columnUnitSuffix, formatBottomDepth, formatBottomDepthBare, formatDim, formatDimBare, formatLength, formatMark, formatMarkBare, measureSlider } from "../lib/geometry/measure-display";
 import { buildOutline } from "../lib/geometry/outline";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
 import { mm, type Mm, type UnitsSystem } from "../lib/geometry/units";
@@ -86,8 +86,10 @@ const MARK_ROWS = {
   veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: { min: 0, max: 0.5 }, leftHint: undefined },
 } as const;
 type MarkField = keyof typeof MARK_ROWS;
-/** A mark slider steps 1/16", or 1 mm. */
+/** A mark slider steps 1/16", or 1 mm; a Depth steps 1/64", or 0.1 mm (quick 261116-tqs, D-09). */
 const MARK_STEP_IN = 1 / 16;
+const DEPTH_STEP_IN = 1 / 64;
+const DEPTH_STEP_MM = 0.1;
 const CHANNEL_WIDTH_RANGE_IN = { min: 0.5, max: 4 };
 /** Stagger is a dim: 1/2" steps, or 10 mm. */
 const STAGGER = { rangeIn: { min: 0, max: 8 }, stepIn: 0.5, stepMm: 10 };
@@ -154,15 +156,15 @@ function slid(view: { value: number; min: number; max: number; step: number }) {
 
 function markRow(name: string, field: MarkField, value: Mm, system: UnitsSystem): SliderWords {
   const row = MARK_ROWS[field];
-  const view = measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
-  const mark = formatMark(value, system);
+  const view = field === "depth" ? measureSlider(value, row.rangeIn, DEPTH_STEP_IN, DEPTH_STEP_MM, system) : measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
+  const mark = field === "depth" ? formatBottomDepth(value, system) : formatMark(value, system);
   const words = field === "troughAt" ? BOTTOM_COPY.fromStringer(mark) : mark;
   return {
     name,
     words,
     line: `${row.label} — ${words}`,
     ...slid(view),
-    hints: row.leftHint ? [row.leftHint, formatMark(view.toMm(view.max), system)] : [],
+    hints: row.leftHint ? [row.leftHint, field === "depth" ? formatBottomDepth(view.toMm(view.max), system) : formatMark(view.toMm(view.max), system)] : [],
   };
 }
 
@@ -334,7 +336,7 @@ function dataWords(m: Model, system: UnitsSystem) {
   const columns = BOTTOM_COPY.depthsColumns;
   const rowLabel = (row: BottomDataRow) =>
     row.label === "tail" ? BOTTOM_COPY.rowTail : row.label === "nose" ? BOTTOM_COPY.rowNoseTip : formatDimBare(row.station, system);
-  const depth = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system));
+  const depth = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatBottomDepthBare(value, system));
   const frontPair = m.placement.marks.some((mark) => mark.role === "front");
   const floorNotes = [...BOTTOM_SECTIONS, "channels" as const]
     .map((section) =>
@@ -667,17 +669,16 @@ test.describe("BOTTOM in Metric: marks in millimetres, sizes and stations in cen
     expect(await inchFigures(page), "no inch figure on the panel or the drawings").toEqual([]);
 
     // The house rule, said plainly: the size reads in centimetres, a station in centimetres, a mark in whole
-    // millimetres, and Depth's track stops at the last whole millimetre inside 1/2" with its hint agreeing.
+    // millimetres, and Depth, the one finer mark, steps and reads to 0.1 mm with its track ending at 1/2" and its hint agreeing.
     for (const [, value] of metricViewer.readout) expect(value).toMatch(/^\d+\.\d\scm$/);
     const row = (name: string) => metricViewer.sliders.find((s) => s.name === name)!;
     const depthRow = row(BOTTOM_COPY.sliderName("center", BOTTOM_COPY.depth));
-    const depthTrack = measureSlider(m.resolved.center.depth, MARK_ROWS.depth.rangeIn, MARK_STEP_IN, 1, "metric");
-    expect(depthRow.max).toBe(depthTrack.max);
-    expect(depthRow.step).toBe(1);
-    expect(Number.isInteger(depthRow.max)).toBe(true);
-    expect(depthRow.hints[1]).toBe(fold(formatMark(depthTrack.toMm(depthTrack.max), "metric")));
-    expect(depthRow.hints[1]).toMatch(/^\d+\smm$/);
-    expect(depthRow.words).toMatch(/^\d+\smm$/);
+    const depthTrack = measureSlider(m.resolved.center.depth, MARK_ROWS.depth.rangeIn, DEPTH_STEP_IN, DEPTH_STEP_MM, "metric");
+    expect(depthRow.max).toBe(round(depthTrack.max));
+    expect(depthRow.step).toBe(DEPTH_STEP_MM);
+    expect(depthRow.hints[1]).toBe(fold(formatBottomDepth(depthTrack.toMm(depthTrack.max), "metric")));
+    expect(depthRow.hints[1]).toMatch(/^\d+\.\d\smm$/);
+    expect(depthRow.words).toMatch(/^\d+\.\d\smm$/);
     expect(row(BOTTOM_COPY.sliderName("center", BOTTOM_COPY.start)).words).toMatch(/^\d+\.\d\scm\s/);
     expect(row(BOTTOM_COPY.sliderName("tail", BOTTOM_COPY.veeLift)).words).toMatch(/^\d+\smm$/);
     for (const gauge of metricViewer.gauges) for (const text of gauge.texts) expect(text).toMatch(/^\d+\smm(\s|$)/);
@@ -703,10 +704,10 @@ test.describe("BOTTOM in Metric: marks in millimetres, sizes and stations in cen
     expect(await expectData(page, m, "imperial")).toEqual(imperialData);
     expect(await storedOpenBoard(page), "switching systems writes nothing to the board").toEqual(kept);
 
-    // A Depth kept at the full 1/2", which is 12.7 mm: in Metric its label rounds to the nearest whole millimetre while
-    // the thumb rests at the last whole millimetre inside the range — and showing it that way writes nothing.
+    // A Depth kept at the full 1/2", which is 12.7 mm: in Metric its label reads 12.7 mm to a tenth and the thumb rests at the
+    // end of its 0.1 mm track — and showing it that way writes nothing.
     const depthName = BOTTOM_COPY.sliderName("center", BOTTOM_COPY.depth);
-    const inchTrack = measureSlider(m.resolved.center.depth, MARK_ROWS.depth.rangeIn, MARK_STEP_IN, 1, "imperial");
+    const inchTrack = measureSlider(m.resolved.center.depth, MARK_ROWS.depth.rangeIn, DEPTH_STEP_IN, DEPTH_STEP_MM, "imperial");
     const fullDepth = inchTrack.toMm(inchTrack.max);
     await page.getByRole("slider", { name: depthName, exact: true }).focus();
     await page.keyboard.press("End");
@@ -719,10 +720,8 @@ test.describe("BOTTOM in Metric: marks in millimetres, sizes and stations in cen
       .poll(async () => (await readViewer(page)).shown.sliders.find((slider) => slider.name === want.name), { timeout: 30_000 })
       .toEqual(want);
     expect(want.value, "the thumb rests at the end of its track").toBe(want.max);
-    const metricTrack = measureSlider(fullDepth, MARK_ROWS.depth.rangeIn, MARK_STEP_IN, 1, "metric");
-    expect(fullDepth, "the kept depth is past the track's last whole millimetre").toBeGreaterThan(metricTrack.toMm(metricTrack.max));
-    expect(want.words, "the label says the kept depth, rounded").not.toBe(want.hints[1]);
-    expect(want.words).toMatch(/^\d+\smm$/);
+    expect(want.words, "the label says the kept depth to a tenth, the same as the track's end").toBe(want.hints[1]);
+    expect(want.words).toMatch(/^\d+\.\d\smm$/);
     expect(await storedOpenBoard(page), "showing a kept depth in Metric writes nothing").toEqual(keptFull);
   });
 });

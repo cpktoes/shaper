@@ -39,6 +39,7 @@ import {
   MIN_RAIL_MARK_IN,
   RAIL_DATA_LABEL_ORDER,
   RAIL_NUDGE_KEYS,
+  RAIL_DOME_NUDGE_MAX_IN,
   RAIL_NUDGE_LIMIT_IN,
   RAIL_NUDGE_NAMES,
   RAIL_NUDGE_STEP_IN,
@@ -433,12 +434,18 @@ describe("held inputs (R7, PC6) — a stored value outside its window draws at t
 
   it("a tip's scale 0.2 as 0.5, a nudge of 5\" as its window's end, and the centre ignores a stored scale of 0.6", () => {
     same(computeRailSectionOutput("nose", { ...nose, scaleFromCenter: 0.2 }, false), computeRailSectionOutput("nose", { ...nose, scaleFromCenter: RAIL_SCALE_RANGE.min }, false));
-    for (const key of RAIL_NUDGE_KEYS) {
+    // The dome's window now runs to the stringer (quick 261116-tqs, D-04): 5" is inside it and draws as 5", and a stored 20" is
+    // held at the engine's top. Every other nudge is held at its own window's end exactly as before.
+    for (const key of RAIL_NUDGE_KEYS.filter((k) => k !== "domedDeckBand")) {
       same(
         computeRailSectionOutput("nose", { ...nose, nudges: nudgesIn({ [key]: 5 }) }, false),
         computeRailSectionOutput("nose", { ...nose, nudges: nudgesIn({ [key]: RAIL_NUDGE_LIMIT_IN[key] }) }, false),
       );
     }
+    same(
+      computeRailSectionOutput("nose", { ...nose, nudges: nudgesIn({ domedDeckBand: 20 }) }, false),
+      computeRailSectionOutput("nose", { ...nose, nudges: nudgesIn({ domedDeckBand: RAIL_DOME_NUDGE_MAX_IN }) }, false),
+    );
     const center = DEFAULT_RAIL_BAND_SPEC.center;
     same(computeRailSectionOutput("center", { ...center, scaleFromCenter: 0.6 }, false), computeRailSectionOutput("center", center, false));
     expect(computeRailSectionOutput("center", { ...center, scaleFromCenter: 0.6 }, false).result.scale).toBe(1);

@@ -3,7 +3,7 @@ import { BOTTOM_COPY, layoutMarkColumnName, layoutMarksNote, referenceRowsNote }
 import { BOTTOM_GUIDE_WORDS, guideHow } from "../components/bottom/bottom-guide-words";
 import { bottomSheetLayout, bottomSheetStationsLine } from "../components/summary/bottom-sheet-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, bottomLayoutMarks, type BottomDataRow } from "../lib/geometry/bottom";
-import { columnUnitSuffix, formatDimBare, formatMarkBare, formatMarkOrLessBare } from "../lib/geometry/measure-display";
+import { columnUnitSuffix, formatBottomDepthBare, formatDimBare, formatMarkBare } from "../lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "../lib/geometry/units";
 import { boardWithBottom, openOnBoard, type BoardWithBottom } from "./helpers/bottom-print";
 
@@ -84,15 +84,16 @@ async function openSummaryOn(page: Page, board: BoardWithBottom) {
 /**
  * DATA's own cell rules (`bottomDepthCell` in `components/bottom/bottom-copy.ts`), which the printed tables follow word
  * for word — spelled out again here so the page is judged by the rule, not by the function that draws it. Under a
- * quarter of a millimetre nothing is cut and the cell is the dash; a depth that is there but too small for the tape
- * reads `<1/16"` (`<1` under a head that carries `mm`), never a nought (the founder, 2026-11-10).
+ * quarter of a millimetre nothing is cut and the cell is the dash; a depth that is there reads to the nearest 1/64" (a
+ * tenth of a millimetre under a head that carries `mm`) and never a nought (the founder, 2026-11-10; to 1/64" and 0.1 mm,
+ * quick 261116-tqs, D-09).
  */
 function depthCell(value: Mm, system: UnitsSystem): string {
-  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system);
+  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatBottomDepthBare(value, system);
 }
-/** What a depth that is there must never read: a bare nought, as the tape's own formatter would print it. */
+/** What a depth that is there must never read: a bare nought, as the depth's own formatter would print it. */
 function nought(system: UnitsSystem): string {
-  return formatMarkBare(0 as Mm, system);
+  return formatBottomDepthBare(0 as Mm, system);
 }
 function rowLabel(row: BottomDataRow, system: UnitsSystem): string {
   if (row.label === "tail") return BOTTOM_COPY.rowTail;
@@ -297,7 +298,7 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
     const depthCells = (await tableCells(tablesSheet.locator("table[data-bottom-sheet-depths]"))).map((cells) => [cells[2], cells[3]]);
     expect(depthCells).toEqual(rows.map((row) => [depthCell(row.deepest, "imperial"), depthCell(row.railLift, "imperial")]));
     expect(depthCells.flat(), "no depth cell reads a bare nought").not.toContain(nought("imperial"));
-    expect(depthCells.flat(), "a depth too small for the tape is on this page (non-vacuity)").toContain('<1/16"');
+    expect(depthCells.flat().some((cell) => /^\d+\/64"$/.test(cell)), "a depth between sixteenths, read to its 64th, is on this page (non-vacuity)").toBe(true);
     expect(depthCells.flat(), "and a station where nothing is cut still reads the dash").toContain(BOTTOM_COPY.emptyCell);
     await expect(tablesSheet.locator("table[data-bottom-sheet-marks] thead th")).toHaveCount(
       bottomLayoutMarks(board.resolved, board.board).columns.length + 1,

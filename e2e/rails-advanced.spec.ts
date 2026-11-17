@@ -5,6 +5,8 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
 import { hardEdgeBlendsFromSlider } from "../lib/geometry/blank-reasons";
 import { formatDim } from "../lib/geometry/measure-display";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES, railAnchorStations, railDomeNudgeTops } from "../lib/geometry/design";
+import { buildOutline } from "../lib/geometry/outline";
 import { DEFAULT_RAIL_BAND_SPEC, hardEdgeBlendsFrom, hardEdgeEndsAt } from "../lib/geometry/rail-bands";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
@@ -24,7 +26,8 @@ import { goToScreen } from "./helpers/screens";
  *   putting it all back (R10, R14, PC17-PC20). Plan 04 (R17, 2026-11-02) took the Deck Mark 2 and
  *   Bottom Tuck 2 sliders away — "Always in the middle is great" — and added the Domed Deck Band's
  *   under Deck Mark 3 (R18, PC32).
- * - The Domed Deck Band slider (plan 04, R18): ±2" in 1/16" steps, and the dome never lands on Deck
+ * - The Domed Deck Band slider (plan 04, R18): from -2" in 1/16" steps up to the stringer at that section (quick
+ *   261116-tqs, D-04: it was +2"), the plot stopping at the stringer and drawing it (D-12), and the dome never lands on Deck
  *   Mark 3 — the founder's final ruling, "never let it equal Deck Mark 3" — even a moved one: it stops
  *   1/16" past it.
  * - The Finished Rail switch on VIEWER: on by default, one finished-rail line per visible plot and
@@ -525,8 +528,17 @@ test.describe("the Ghost Bands switch on VIEWER (fast task, 2026-11-02)", () => 
   });
 });
 
+/** The top of each Domed Deck Band slider on the stock board, from the app's own functions (quick 261116-tqs, D-04). */
+function stockDomeTops() {
+  const f = stockBoardFields();
+  const profile = designSideProfile(f, LIVE_DESIGN_RULES);
+  const anchors = railAnchorStations(profile.effectiveFoil, f.outline.length);
+  const effective = deriveEffectiveRails(f.rails, profile.effectiveFoil, f.railsImportFoilThickness);
+  return railDomeNudgeTops(buildOutline(f.outline), anchors, effective);
+}
+
 test.describe("the Domed Deck Band slider (quick 261102-gec plan 04, R18)", () => {
-  test("12. the dome runs ±2\" in 1/16\" steps and never lands on Deck Mark 3 — it stops 1/16\" past it, even when Deck Mark 3 moves; the DATA tab follows it and Reset puts it back", async ({
+  test("12. the dome runs from -2\" to the stringer in 1/16\" steps and never lands on Deck Mark 3 — it stops 1/16\" past it, even when Deck Mark 3 moves; at the far end the plot meets the stringer and draws it; the DATA tab follows it and Reset puts it back", async ({
     page,
   }, testInfo) => {
     await openRails(page);
@@ -542,8 +554,14 @@ test.describe("the Domed Deck Band slider (quick 261102-gec plan 04, R18)", () =
     const slider = rowSlider(dome);
     const bound = async (name: "min" | "max") =>
       (await slider.getAttribute(name)) ?? (await slider.getAttribute(`aria-value${name}`));
+    const tops = stockDomeTops();
     expect(Number(await bound("min"))).toBe(-2);
-    expect(Number(await bound("max"))).toBe(2);
+    // The far end is the app's own top for this section: past the old +2", the dome at the stringer.
+    expect(tops.center).toBeGreaterThan(2);
+    expect(Number(await bound("max"))).toBeCloseTo(tops.center, 6);
+    // The stock dome stops short of the stringer, so the plot draws no stringer line yet.
+    const stringerLine = page.locator('[data-rail-stringer="center"]');
+    await expect(stringerLine).toHaveCount(0);
 
     const first = await dome.textContent();
     expect(first).toMatch(/\(0"\)$/);
@@ -557,9 +575,11 @@ test.describe("the Domed Deck Band slider (quick 261102-gec plan 04, R18)", () =
     expect(await markSixteenths(dome)).toBe(dome0 + ONE_SIXTEENTH);
 
     await domeThumb.press("End");
-    await expect(dome).toHaveText(/\(\+2"\)$/);
-    expect(await markSixteenths(dome)).toBe(dome0 + TWO_INCHES);
+    await expect.poll(async () => markSixteenths(dome)).toBe(dome0 + Math.round(tops.center * 16));
     await expect(deckMark3).toHaveText(deckMark3Text ?? "");
+    // The dome now meets the stringer: the plot stops there and draws it, in the stringer dash.
+    await expect(stringerLine.first()).toBeAttached();
+    expect(await stringerLine.first().getAttribute("stroke-dasharray")).toBe("var(--outline-stringer-dash)");
 
     // At -2" the sheet's 2.4 x T would land inside Deck Mark 3: the dome is held one sixteenth past it.
     await domeThumb.press("Home");
@@ -625,11 +645,27 @@ test.describe("the plot row keeps clear of the corner toolbar (fast task, 2026-1
     expect(g.numbersInside).toBe(true);
     expect(g.numberCount).toBeGreaterThan(0);
 
-    // The centre's dome at +2": the plots grow until the zoom row would reach the buttons, so the whole
-    // row drops below them — and the whole inch now past the axis's end gets no number to be cut.
+    // The centre's dome at its far end, the stringer (it was +2" before quick 261116-tqs, whose plots then ran 2" past the
+    // dome; they now stop at the stringer, D-12, so a plot is a little narrower there and the window a little narrower too):
+    // the plots grow until the zoom row would reach the buttons, so the whole row drops below them — and the whole inch
+    // now past the axis's end gets no number to be cut.
     const center = await showRail(page, testInfo, "center");
     const body = await openAdvanced(center);
     await nudgeThumb(page, "center", "Domed Deck Band").press("End");
+    // Walk the window narrower from 1280 until the plots reach the buttons: some computer width above the narrowest one does it.
+    let dropped = false;
+    for (const width of [1240, 1200, 1160, 1120, 1080, 1040, 1000, 960, 920]) {
+      await page.setViewportSize({ width, height: 800 });
+      dropped = await expect
+        .poll(async () => (await row.getAttribute("data-rail-plot-drop")) !== null, { timeout: 1500 })
+        .toBe(true)
+        .then(
+          () => true,
+          () => false,
+        );
+      if (dropped) break;
+    }
+    expect(dropped).toBe(true);
     await expect(row).toHaveAttribute("data-rail-plot-drop", /^\d+$/);
     await expect.poll(async () => (await geometry()).zoomBelowToolbar).toBe(true);
     g = await geometry();

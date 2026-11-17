@@ -26,8 +26,8 @@
  * reference page leaves all of them out, so each is proven by a rule test rather than the golden):
  * - HELD INPUTS (R7, PC6). The engine reads Deck Profile as at least 75% (the sheet's minimum rail
  *   thickness), Ratio as 20-80, the scale as 0.50-1.00 (the centre always 1) and each nudge inside its
- *   window (±2" on the Domed Deck Band, ±1/2" on the deck marks, ±1/4" on the others). A stored value is
- *   never rewritten.
+ *   window (-2" to the stringer on the Domed Deck Band, ±1/2" on the deck marks, ±1/4" on the
+ *   others). A stored value is never rewritten.
  * - NUDGES (PC1, amended by plan 04's PC25, R17 and R18, 2026-11-02). Each rail stores six plus-or-minus
  *   amounts, one per mark the founder can tweak, all 0 on a new board: Apex Thickness, Deck Mark 1, Deck
  *   Mark 3, the Domed Deck Band, Bottom Tuck 1 and Bottom Tuck 3. Deck Mark 2 and Bottom Tuck 2 have none:
@@ -50,6 +50,7 @@
  */
 
 import type { Point2D } from "./board";
+import { WIDE_BOARD_WIDEPOINT_MAX_IN } from "./board-size";
 import { type Mm, inchesToMm, mm, mmToInches, roundToSixteenthInch } from "./units";
 
 export type RailFamily = 1 | 2 | 3 | 4 | 5;
@@ -101,7 +102,8 @@ export type RailNudgeKey = (typeof RAIL_NUDGE_KEYS)[number];
 export type RailMarkNudges = Record<RailNudgeKey, Mm>;
 
 /** How far each nudge may move its mark either way, in inches: the Domed Deck Band ±2" (R18, the founder:
- * "Let's keep the ±2" slider"), Bottom Tuck 3 ±3/4" (R19, the founder, 2026-11-02: "bottom tuck 3 tweak should
+ * "Let's keep the ±2" slider"; since quick 261116-tqs that is its low end and the GUIDE's push window only, the high end
+ * reaches in to the stringer: see `RAIL_DOME_NUDGE_MAX_IN` and `domedDeckBandNudgeTop`), Bottom Tuck 3 ±3/4" (R19, the founder, 2026-11-02: "bottom tuck 3 tweak should
  * go to ±3/4""), the deck marks ±1/2", Apex Thickness and Bottom Tuck 1 ±1/4". A −3/4" Bottom Tuck 3 still stops
  * 1/16" beyond Bottom Tuck 1 (the floor in `computeRailSectionInches`), as any nudge of it always has. */
 export const RAIL_NUDGE_LIMIT_IN: Readonly<Record<RailNudgeKey, number>> = {
@@ -155,6 +157,38 @@ export const RAIL_NUDGE_NAMES: Readonly<Record<RailNudgeKey, string>> = {
 /** A nudge slider's step in inches (the founder's brief: "in 1/16" or 1 mm steps"; PC24). Metric steps a
  * whole millimetre through `measureSlider`. */
 export const RAIL_NUDGE_STEP_IN = 1 / 16;
+
+/**
+ * How near the stringer the Domed Deck Band may run the dome, in inches: none, the dome may reach the stringer itself
+ * (quick 261116-tqs, D-04 as the founder amended it, 2026-11-16: "let's just allow it to go to the stringer then"; first asked
+ * as "all the way back to 1" from the stringer", so that the whole deck reads domed). The dome is the distance in from the
+ * rail where the deck's crown ends, so at the stringer it equals the section's half-width.
+ */
+export const RAIL_DOME_STRINGER_ROOM_IN = 0;
+
+/**
+ * The engine's own top for the Domed Deck Band's nudge, in inches: half of the widest board the app makes at its widepoint
+ * (`WIDE_BOARD_WIDEPOINT_MAX_IN`), less `RAIL_DOME_STRINGER_ROOM_IN`. It is the one clamp every reader of a nudge goes
+ * through (RAILS, the finished rail, the litres, the 3D board, the .brd export, the printed rail-band sheet), so each follows a wider
+ * dome with no change of its own, and a stored nudge inside the old +-2" means exactly what it meant. The slider's own top
+ * at a section is `domedDeckBandNudgeTop`, which is never above this.
+ */
+export const RAIL_DOME_NUDGE_MAX_IN = WIDE_BOARD_WIDEPOINT_MAX_IN / 2 - RAIL_DOME_STRINGER_ROOM_IN;
+
+/**
+ * The top of the Domed Deck Band's slider at a section (inches): the nudge that puts the dome at the stringer
+ * (`RAIL_DOME_STRINGER_ROOM_IN` from it), which is the section's half-width less that room less the dome's own 2.4 x the board
+ * thickness, floored onto the slider's 1/16" steps counted from its low end (-2"). Never below one step above the low end,
+ * never above `RAIL_DOME_NUDGE_MAX_IN`. Where 2.4 x thickness + 2" would already pass the stringer (a narrow tip), the slider's
+ * top is below the old +2": the dome never passes the stringer. `halfWidth` is the section's half-width in the board (the
+ * foam's, at the rail anchor); `boardThickness` is the section's board thickness as RAILS shows it.
+ */
+export function domedDeckBandNudgeTop(halfWidth: Mm, boardThickness: Mm): number {
+  const low = -RAIL_NUDGE_LIMIT_IN.domedDeckBand;
+  const reach = mmToInches(halfWidth) - RAIL_DOME_STRINGER_ROOM_IN - 2.4 * mmToInches(boardThickness);
+  const onStep = low + Math.floor((reach - low) / RAIL_NUDGE_STEP_IN + 1e-9) * RAIL_NUDGE_STEP_IN;
+  return Math.max(low + RAIL_NUDGE_STEP_IN, Math.min(RAIL_DOME_NUDGE_MAX_IN, onStep));
+}
 
 /** What a rail's Advanced settings are on a new board (PC20): every nudge 0, Single Tuck off, Sharp Bottom
  * Edge off (quick 261102-gec plan 05, R22/PC37), and "Scaled from center by" `DEFAULT_TIP_RAIL_SCALE` (1 since
@@ -616,7 +650,11 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
   const s = clamp(input.scale, RAIL_SCALE_RANGE.min, RAIL_SCALE_RANGE.max);
   const ratioTop = clamp(input.ratioTopPct, RAIL_RATIO_RANGE.min, RAIL_RATIO_RANGE.max);
   const n = Object.fromEntries(
-    RAIL_NUDGE_KEYS.map((k) => [k, clamp(input.nudgesIn[k], -RAIL_NUDGE_LIMIT_IN[k], RAIL_NUDGE_LIMIT_IN[k])]),
+    RAIL_NUDGE_KEYS.map((k) => [
+      k,
+      // The dome alone reaches further on its high side (quick 261116-tqs, D-04): every other nudge is exactly as it was.
+      clamp(input.nudgesIn[k], -RAIL_NUDGE_LIMIT_IN[k], k === "domedDeckBand" ? RAIL_DOME_NUDGE_MAX_IN : RAIL_NUDGE_LIMIT_IN[k]),
+    ]),
   ) as Record<RailNudgeKey, number>;
 
   const bottomRatio = 1 - ratioTop / 100; // C5: =100%-C4
@@ -634,7 +672,8 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
   const deckMark1 = Math.max(T * s + n.deckMark1, MIN); // C16: =(1*C7)*C3
   const deckMark2 = Math.max(MIN, Math.min(deckMark1 / 2, deckMark1 - MIN)); // C17: =C16/2
   const deckMark3 = Math.max(1.8 * T * s + n.deckMark3, deckMark1 + MIN); // C18: =(1.8*C7)*C3
-  // C15: =2.4*C7 — the board thickness, never scaled — plus its own nudge (R18, ±2"), worked out after Deck
+  // C15: =2.4*C7 — the board thickness, never scaled — plus its own nudge (R18, from -2" up to the stringer,
+  // D-04 of quick 261116-tqs; it was ±2"), worked out after Deck
   // Mark 3 is settled and held at least 1/16" beyond it: the founder's final ruling (2026-11-02), "Let's keep
   // the ±2" slider, but never let it equal Deck Mark 3." The same rule Bottom Tuck 3 keeps against Bottom
   // Tuck 1. Un-nudged it never holds anything (PC27): 2.4T - 1.8T x s is at least 0.6T, far more than 1/16"
@@ -955,15 +994,24 @@ export function railPlotDots(
 
 export interface RailPlotBoundsOpts {
   xAxisMinShared?: Mm;
+  /**
+   * How far in from the rail the stringer stands at this section (the foam's half-width there; quick 261116-tqs, D-12, the
+   * founder, 2026-11-16: "stop the plot at the stringer"). Given, the plot's span is held to it: it never runs past the stringer.
+   * Left out (every caller that knows no board), the span is exactly what it always was.
+   */
+  stringer?: Mm;
 }
 
 /** Axis range for one section's plot (rule 12): 2" beyond the Domed Deck Band (or the shared minimum),
- * and 1/4" above the board thickness. */
+ * and 1/4" above the board thickness. With `opts.stringer`, the span stops at the stringer when that is nearer
+ * (D-12); a plot that stops short of the stringer keeps its span. */
 export function railPlotBounds(result: RailSectionResult, opts: RailPlotBoundsOpts = {}): { xAxisMin: Mm; yAxisMax: Mm } {
-  const xAxisMinIn = Math.min(
+  const spanIn = Math.min(
     -(mmToInches(result.domedDeckBand) + 2),
     opts.xAxisMinShared !== undefined ? mmToInches(opts.xAxisMinShared) : 0,
   );
+  const stringerIn = opts.stringer !== undefined && opts.stringer > 0 ? mmToInches(opts.stringer) : null;
+  const xAxisMinIn = stringerIn === null ? spanIn : Math.max(spanIn, -stringerIn);
   const yAxisMaxIn = mmToInches(result.boardThickness) + 0.25;
   return { xAxisMin: mm(inchesToMm(xAxisMinIn)), yAxisMax: mm(inchesToMm(yAxisMaxIn)) };
 }
@@ -992,6 +1040,12 @@ export interface RailSectionOutput {
   profile: Point2D[];
   segments: RailSegment[];
   bounds: { xAxisMin: Mm; yAxisMax: Mm };
+  /**
+   * How far in from the rail the stringer stands at this section (quick 261116-tqs, D-12). Present only when the caller knew the
+   * board (`computeRailBands`' `stringers`): `bounds` is then held to it, and the plot draws the stringer where its span reaches
+   * it. Absent, the section is exactly what it always was.
+   */
+  stringer?: Mm;
   dataGroups: RailDataGroup[];
   /** The bottom under this rail (Phase 17, D-41) — set only by `design.ts`'s `railBandsOnTheBottom`, wherever the
    * vees, bellies and concaves leave a bottom that is not flat within the section's reach, or channels are cut into
@@ -1057,6 +1111,7 @@ export function computeRailSectionOutput(
   sectionSpec: RailSectionSpec,
   hardEdge: boolean,
   rounding: RailThicknessRounding = "sixteenths",
+  stringer?: Mm,
 ): RailSectionOutput {
   const deckPercent = effectiveDeckPercent(sectionSpec.deckPercent);
   const domed = deckPercent < 100;
@@ -1084,17 +1139,26 @@ export function computeRailSectionOutput(
     result,
     profile: buildRailProfile(result),
     segments: buildRailSegments(result),
-    bounds: railPlotBounds(result),
+    bounds: railPlotBounds(result, { stringer }),
+    ...(stringer !== undefined ? { stringer } : {}),
     dataGroups: buildRailDataGroups(result, { domed }),
   };
 }
 
-/** Every rail section's output: the nose and centre never have a hard edge; the tail's follows the flag. */
-export function computeRailBands(spec: RailBandSpec, rounding: RailThicknessRounding = "sixteenths"): RailBandsOutput {
+/**
+ * Every rail section's output: the nose and centre never have a hard edge; the tail's follows the flag. `stringers`, where given
+ * (the foam's half-width at each section's anchor, `railStringerDistances`), holds each plot's span to its stringer (quick
+ * 261116-tqs, D-12); left out, every section is exactly what it always was.
+ */
+export function computeRailBands(
+  spec: RailBandSpec,
+  rounding: RailThicknessRounding = "sixteenths",
+  stringers?: Record<RailSectionKey, Mm>,
+): RailBandsOutput {
   return {
-    nose: computeRailSectionOutput("nose", spec.nose, false, rounding),
-    center: computeRailSectionOutput("center", spec.center, false, rounding),
-    tail: computeRailSectionOutput("tail", spec.tail, spec.tailHardEdge, rounding),
+    nose: computeRailSectionOutput("nose", spec.nose, false, rounding, stringers?.nose),
+    center: computeRailSectionOutput("center", spec.center, false, rounding, stringers?.center),
+    tail: computeRailSectionOutput("tail", spec.tail, spec.tailHardEdge, rounding, stringers?.tail),
   };
 }
 

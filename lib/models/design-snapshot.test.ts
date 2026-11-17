@@ -1616,3 +1616,42 @@ describe("a belly's Off Stringer rides on the cut with no schema change (quick 2
     expect(roundTrip({ ...FIXTURES[0], bottom }).bottom!.center.offStringer).toBe(0);
   });
 });
+
+describe("a polished bottom's off-step numbers survive the board reader (quick 261116-tqs, D-02)", () => {
+  const board = designBottomBoard(
+    FIXTURES[0].outline,
+    buildOutline(FIXTURES[0].outline),
+    designSideProfile(FIXTURES[0], LIVE_DESIGN_RULES),
+    designFinPlacement(FIXTURES[0]),
+  );
+
+  it("stations, depth and every across mark written between BOTTOM's steps parse back key for key", () => {
+    const bottom: BoardBottom = {
+      ...DEFAULT_BOTTOM,
+      center: {
+        ...startingCut("center", "Deep Single Concave", board),
+        start: mm(inchesToMm(37.3)),
+        deepest: mm(inchesToMm(21.7)),
+        end: mm(inchesToMm(5.31)),
+        depth: mm(inchesToMm(0.1137)),
+        offRail: mm(inchesToMm(1.3713)),
+      },
+      tail: {
+        ...startingCut("tail", "Double Concave Exit", board),
+        depth: mm(inchesToMm(0.1531)),
+        troughAt: mm(inchesToMm(3.4375)),
+        offRail: mm(inchesToMm(0.8421)),
+        offStringer: mm(inchesToMm(0.2657)),
+        deepest: mm(inchesToMm(-1.2417)),
+      },
+      nose: { ...startingCut("nose", "Rolled Belly Entry", board), offStringer: mm(inchesToMm(2.0623)), depth: mm(inchesToMm(0.3711)) },
+    };
+    const opened = roundTrip({ ...FIXTURES[0], bottom }).bottom!;
+    expect(opened).toEqual(bottom);
+    for (const key of ["nose", "center", "tail"] as const) {
+      for (const field of ["start", "deepest", "end", "depth", "offRail", "offStringer", "troughAt"] as const) {
+        expect(opened[key][field]).toBe(bottom[key][field]);
+      }
+    }
+  });
+});
