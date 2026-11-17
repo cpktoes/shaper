@@ -27,11 +27,11 @@ const BUILT = new WeakMap<object, Map<string, GuidePageBuild>>();
 
 export function RailsGuide() {
   const { system } = useUnits();
-  const { effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, outline, modelId, boardName } = useDesign();
+  const { effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, outline, modelId, boardName, railDomeNudgeTop } = useDesign();
 
   const input = useMemo<RailsGuideInput>(
-    () => ({ effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, boardLength: outline.length }),
-    [effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, outline.length],
+    () => ({ effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, boardLength: outline.length, domeNudgeTop: railDomeNudgeTop }),
+    [effectiveRails, railBands, railsImportFoilThickness, outlineGeometry, outline.length, railDomeNudgeTop],
   );
   const groups = useMemo(() => {
     const build = memoGuide(BUILT, input, system, () => buildRailsGuide(input, system));

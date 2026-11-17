@@ -156,6 +156,9 @@ export interface RailsGuideInput {
   outlineGeometry: OutlineGeometry;
   /** The board's length, as RAILS' blend sliders read it. */
   boardLength: Mm;
+  /** The top of each section's Domed Deck Band slider in inches (`railDomeNudgeTops`, the same figure RAILS' own slider
+   * runs to: the dome at the stringer there). The Domed Deck Band card pushes the dome to it (quick 261116-tqs). */
+  domeNudgeTop: Record<RailSectionKey, number>;
 }
 
 /** A pushed card's board: one section with one field changed (or the tail's flag), or the blend pair moved. */
@@ -176,17 +179,29 @@ const hardEdgeOf = (input: RailsGuideInput, key: RailSectionKey) => key === "tai
  * A nudge's push within the slider's own window (`RAIL_NUDGE_LIMIT_IN` through `measureSlider`, exactly as
  * RAILS' Advanced slider reads it): the push amount toward the far end, held at the slider's end if it would
  * pass it; the other way when the slider is already at that end; `null` with no room either way.
+ *
+ * The Domed Deck Band is the one nudge whose slider is not symmetrical (its top, `topIn`, is the stringer at the section),
+ * and it is pushed all the way to that top rather than by a stated amount (quick 261116-tqs, the founder, 2026-11-16:
+ * "Rails guide can update too"); when it already sits at the top it goes the other way by `amount`, held at the bottom.
  */
-function nudgePush(current: Mm, amount: Mm, key: RailNudgeKey, system: UnitsSystem): Mm | null {
+function nudgePush(current: Mm, amount: Mm, key: RailNudgeKey, system: UnitsSystem, topIn?: number): Mm | null {
   const limit = RAIL_NUDGE_LIMIT_IN[key];
-  const slider = measureSlider(current, { min: -limit, max: limit }, RAIL_NUDGE_STEP_IN, 1, system);
+  const slider = measureSlider(current, { min: -limit, max: topIn ?? limit }, RAIL_NUDGE_STEP_IN, 1, system);
   const top = slider.toMm(slider.max);
   const bottom = slider.toMm(slider.min);
-  const up = Math.min(current + amount, top);
+  const up = topIn === undefined ? Math.min(current + amount, top) : top;
   if (up - current > 0.01) return mm(up);
   const down = Math.max(current - amount, bottom);
   if (current - down > 0.01) return mm(down);
   return null;
+}
+
+/** A section's Domed Deck Band slider top as a nudge in millimetres, read the way RAILS' slider reads it (whole millimetres
+ * in Metric, the 1/16" step floor in Imperial): the nudge the Domed Deck Band card pushes the dome to. */
+export function railsGuideDomeTop(input: RailsGuideInput, key: RailSectionKey, system: UnitsSystem): Mm {
+  const limit = RAIL_NUDGE_LIMIT_IN.domedDeckBand;
+  const slider = measureSlider(mm(0), { min: -limit, max: input.domeNudgeTop[key] }, RAIL_NUDGE_STEP_IN, 1, system);
+  return slider.toMm(slider.max);
 }
 
 /**
@@ -251,7 +266,7 @@ export function railsGuideVariants(input: RailsGuideInput, system: UnitsSystem):
   const nudged = (id: string, key: RailNudgeKey, amount: Mm): RailsGuideVariant | null => {
     const spec = rails[RAILS_GUIDE_SECTION[id]];
     const nudges = railNudgesOf(spec.nudges);
-    const to = nudgePush(nudges[key], amount, key, system);
+    const to = nudgePush(nudges[key], amount, key, system, key === "domedDeckBand" ? input.domeNudgeTop[RAILS_GUIDE_SECTION[id]] : undefined);
     return section(id, to === null ? null : { nudges: { ...nudges, [key]: to } });
   };
   const c = rails.center;
@@ -606,6 +621,16 @@ export function buildRailsGuide(input: RailsGuideInput, system: UnitsSystem): Gu
       const before = railNudgesOf(rails[v.key].nudges)[key];
       return [guideFigure(formatSignedMark(mm(railNudgesOf(v.spec.nudges)[key] - before), system))];
     });
+  /** The Domed Deck Band's caption: "to the stringer" while its push runs to the slider's top, the signed mark when the
+   * dome already sits there and the push turns the other way. */
+  const domeCaption = () =>
+    caption(ids.domedDeckBand, () => {
+      const v = sectionOf(ids.domedDeckBand)!;
+      const pushed = railNudgesOf(v.spec.nudges).domedDeckBand;
+      if (pushed >= railsGuideDomeTop(input, v.key, system) - 0.01) return [guideText("to the stringer")];
+      const before = railNudgesOf(rails[v.key].nudges).domedDeckBand;
+      return [guideFigure(formatSignedMark(mm(pushed - before), system))];
+    });
   const nudgeTag = (key: RailNudgeKey) => valueTag(formatMark(key === "apexThickness" ? r.apexLenRange : r[key], system));
 
   const deckPushed = pushedOf(ids.deckProfile);
@@ -667,7 +692,7 @@ export function buildRailsGuide(input: RailsGuideInput, system: UnitsSystem): Gu
     { id: ids.apexThickness, tag: nudgeTag("apexThickness"), caption: nudgeCaption(ids.apexThickness, "apexThickness"), figure: figure(ids.apexThickness) },
     { id: ids.deckMark1, tag: nudgeTag("deckMark1"), caption: nudgeCaption(ids.deckMark1, "deckMark1"), figure: figure(ids.deckMark1) },
     { id: ids.deckMark3, tag: nudgeTag("deckMark3"), caption: nudgeCaption(ids.deckMark3, "deckMark3"), figure: figure(ids.deckMark3) },
-    { id: ids.domedDeckBand, tag: nudgeTag("domedDeckBand"), caption: nudgeCaption(ids.domedDeckBand, "domedDeckBand"), figure: figure(ids.domedDeckBand) },
+    { id: ids.domedDeckBand, tag: nudgeTag("domedDeckBand"), caption: domeCaption(), figure: figure(ids.domedDeckBand) },
     {
       id: ids.singleTuck,
       tag: onTag(c.singleTuck),
