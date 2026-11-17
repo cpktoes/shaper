@@ -288,7 +288,7 @@ Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 17 cards.
 - does: Further in blends the deck down over a wider band for a softer, rounder rail; nearer keeps the deck flat for longer.
 - how: Pencil Deck Mark 3 in from the rail and cut the second deck band from it down to the first, blending the two bands with a screen.
 
-**Domed Deck Band** · tag on the Shortboard: `5 3/8"` · caption: `dashed · +2"`  
+**Domed Deck Band** · tag on the Shortboard: `5 3/8"` · caption: `dashed · to the stringer`  
 - is: Moves where the domed deck starts dropping from the full thickness toward the rail.
 - does: Further in domes more of the deck for a thinner rail under a thicker centre; nearer keeps the deck flat almost to the rail.
 - how: Pencil the Domed Deck Band line and plane the deck from it out to the rail in long passes until the rail reads the Tapered Thickness.
@@ -605,3 +605,5 @@ TEMPLATE · RAILS · VOLUME · FINS (`pages-data.ts` PUSH): {"length":152.399999
 A push is a stated amount added to the board's own value, drawn through the app's own maths with that one field changed; the caption
 under the drawing says what the dashes show ("dashed · +1" nose rocker"), and a card drawn AS a setup or a model (no push) says
 "drawn as · Thruster — McKee Gun".
+
+One exception (quick 261116-tqs, the founder, 2026-11-16): the Domed Deck Band card is not pushed by a stated amount. It pushes the dome all the way to the stringer, the top of the page's own slider at that rail, and its caption reads "dashed · to the stringer". The 50.8 above is only how far it turns the other way on a board whose dome already sits at the stringer.

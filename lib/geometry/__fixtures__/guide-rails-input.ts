@@ -5,7 +5,14 @@
  * Foil Values ticked). Nothing here is a typed number: every value comes out of the app's maths.
  */
 import { presetDesignFields } from "../../blanks/preset-blanks";
-import { deriveEffectiveRails, designSideProfile, LIVE_DESIGN_RULES, type DesignSummaryFields } from "../design";
+import {
+  deriveEffectiveRails,
+  designSideProfile,
+  LIVE_DESIGN_RULES,
+  railAnchorStations,
+  railDomeNudgeTops,
+  type DesignSummaryFields,
+} from "../design";
 import type { RailsGuideInput } from "../guide-rails";
 import { buildOutline } from "../outline";
 import { BOARD_PRESETS, type BoardPreset } from "../presets";
@@ -25,6 +32,8 @@ export function railsGuideInputFromFields(
     railsImportFoilThickness,
     outlineGeometry,
     boardLength: fields.outline.length,
+    // The top of each Domed Deck Band slider, as the store works it out for a flat bottom (`railsOnBottom` is the rails themselves).
+    domeNudgeTop: railDomeNudgeTops(outlineGeometry, railAnchorStations(sideProfile.effectiveFoil, fields.outline.length), effectiveRails),
   };
 }
 

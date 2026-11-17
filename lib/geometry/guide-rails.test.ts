@@ -13,18 +13,23 @@ import {
   RAILS_GUIDE_SECTION,
   railsGuideFinishedRail,
   railsGuidePushedOutput,
+  railsGuideDomeTop,
   railsGuideVariants,
   railsGuideX0,
   railsThicknessName,
   type RailsGuideInput,
 } from "./guide-rails";
-import { formatDim, formatMark, formatSignedMark, stationLabel } from "./measure-display";
+import { designSideProfile, LIVE_DESIGN_RULES, railAnchorStations } from "./design";
+import { formatDim, formatMark, formatSignedMark, measureSlider, stationLabel } from "./measure-display";
+import { foamHalfWidth } from "./outline";
 import {
   computeRailSectionOutput,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
   railFamilyLabel,
   RAIL_NUDGE_KEYS,
+  RAIL_NUDGE_LIMIT_IN,
+  RAIL_NUDGE_STEP_IN,
   type RailSectionSpec,
 } from "./rail-bands";
 import { BOARD_PRESETS } from "./presets";
@@ -77,7 +82,7 @@ describe("buildRailsGuide — the Shortboard as its card opens it", () => {
     expect(read(ids.apexThickness)).toEqual(['11/16"', 'dashed · +1/4"']);
     expect(read(ids.deckMark1)).toEqual(['2 1/4"', 'dashed · +1/2"']);
     expect(read(ids.deckMark3)).toEqual(['4 1/16"', 'dashed · +1/2"']);
-    expect(read(ids.domedDeckBand)).toEqual(['5 3/8"', 'dashed · +2"']);
+    expect(read(ids.domedDeckBand)).toEqual(['5 3/8"', 'dashed · to the stringer']);
     expect(read(ids.singleTuck)).toEqual(["", "dashed · one tuck"]);
     expect(read(ids.bottomTuck1)).toEqual(['5/16"', 'dashed · +1/4"']);
     expect(read(ids.bottomTuck3)).toEqual(['9/16"', 'dashed · +3/4"']);
@@ -152,7 +157,8 @@ describe("railsGuideVariants — every push is the board with one field changed,
       expect(spec(ids.ratio).ratioTopPercent).toBe(push.ratioTop);
       expect(spec(ids.scaled).scaleFromCenter).toBe(push.scale);
       expect(spec(ids.apexThickness).nudges.apexThickness).toBeCloseTo(push.apex, 9);
-      expect(spec(ids.domedDeckBand).nudges.domedDeckBand).toBeCloseTo(push.domedBand, 9);
+      // The Domed Deck Band is pushed to its slider's top, not by `push.domedBand` (quick 261116-tqs; its own describe below).
+      expect(spec(ids.domedDeckBand).nudges.domedDeckBand).toBe(railsGuideDomeTop(shortboard, "center", system));
       expect(spec(ids.bottomTuck1).nudges.bottomTuck1).toBeCloseTo(push.tuck1, 9);
       expect(spec(ids.bottomTuck3).nudges.bottomTuck3).toBeCloseTo(push.tuck3, 9);
       // On the default Shortboard both marks sit at their slider's ends, so the pair cannot move together: Blends From
@@ -231,7 +237,8 @@ describe("buildRailsGuide — the other state drawn on the Longboard, and pushes
   });
 
   it("turns a nudge already at its slider's end the other way", () => {
-    for (const key of RAIL_NUDGE_KEYS) {
+    // The Domed Deck Band is not one of these: its push runs to the stringer, and has its own test below.
+    for (const key of RAIL_NUDGE_KEYS.filter((k) => k !== "domedDeckBand")) {
       const id = RAILS_GUIDE_CARD_ORDER.find((cardId) => RAILS_GUIDE_PUSH_FIELDS[cardId] === `nudges.${key}`)!;
       // The Shortboard's own push lands each slider exactly on its Imperial end; start a board there.
       const top = (railsGuideVariants(shortboard, "imperial")[id] as { spec: RailSectionSpec }).spec.nudges[key];
@@ -247,6 +254,61 @@ describe("buildRailsGuide — the other state drawn on the Longboard, and pushes
   });
 });
 
+describe("buildRailsGuide — the Domed Deck Band card pushes the dome to the stringer (quick 261116-tqs)", () => {
+  const dome = (input: RailsGuideInput, system: "imperial" | "metric" = "imperial") =>
+    (railsGuideVariants(input, system)[ids.domedDeckBand] as { key: "center"; spec: RailSectionSpec }).spec.nudges.domedDeckBand;
+  const fieldsOf = (id: (typeof PRESETS)[number]) => presetDesignFields(BOARD_PRESETS.find((p) => p.id === id)!);
+
+  it("draws the pushed dome at exactly the section's slider top, in both systems, on every preset", () => {
+    for (const id of PRESETS) {
+      const input = guideRailsInput(id);
+      const top = input.domeNudgeTop.center;
+      for (const system of UNITS_SYSTEMS) {
+        const slider = measureSlider(mm(0), { min: -RAIL_NUDGE_LIMIT_IN.domedDeckBand, max: top }, RAIL_NUDGE_STEP_IN, 1, system);
+        expect(dome(input, system), `${id} ${system}`).toBe(slider.toMm(slider.max));
+        expect(railsGuideDomeTop(input, "center", system), `${id} ${system}`).toBe(slider.toMm(slider.max));
+        expect(captionOf(input, ids.domedDeckBand, system), `${id} ${system}`).toBe("dashed · to the stringer");
+      }
+    }
+  });
+
+  it("works that top from the foam's half-width at the rail anchor, so the pushed dome ends at the stringer and never past it", () => {
+    for (const id of PRESETS) {
+      const fields = fieldsOf(id);
+      const input = guideRailsInput(id);
+      const anchors = railAnchorStations(designSideProfile(fields, LIVE_DESIGN_RULES).effectiveFoil, fields.outline.length);
+      const stringer = foamHalfWidth(input.outlineGeometry, anchors.center);
+      const v = railsGuideVariants(input, "imperial")[ids.domedDeckBand] as { kind: "section"; key: "center"; spec: RailSectionSpec; hardEdge: boolean };
+      const mark = railsGuidePushedOutput(v).result.domedDeckBand;
+      // The slider's top is the nudge that puts the mark at the stringer, floored onto its 1/16" steps.
+      expect(mark, id).toBeLessThanOrEqual(stringer + 1e-6);
+      expect(stringer - mark, id).toBeLessThan(inchesToMm(1 / 16) + 1e-6);
+    }
+  });
+
+  it("is further in than the old +2\" push wherever the board is wide enough, and never past the slider's top", () => {
+    const input = guideRailsInput("longboard");
+    expect(dome(input)).toBeGreaterThan(guidePush("imperial").rails.domedBand);
+    expect(dome(shortboard)).toBeLessThanOrEqual(inchesToMm(shortboard.domeNudgeTop.center) + 1e-6);
+  });
+
+  it("turns the other way, by the old 2\", on a board whose dome already sits at the stringer, and says the signed amount", () => {
+    const top = railsGuideDomeTop(shortboard, "center", "imperial");
+    const atTop = guideRailsInput("shortboard", (r) => ({ ...r, center: { ...r.center, nudges: { ...r.center.nudges, domedDeckBand: top } } }));
+    expect(dome(atTop)).toBeCloseTo(top - guidePush("imperial").rails.domedBand, 9);
+    expect(captionOf(atTop, ids.domedDeckBand)).toBe(`dashed · ${formatSignedMark(mm(-guidePush("imperial").rails.domedBand), "imperial")}`);
+  });
+
+  it("turns the other way too when a saved dome is already past the slider's top", () => {
+    const past = guideRailsInput("shortboard", (r) => ({
+      ...r,
+      center: { ...r.center, nudges: { ...r.center.nudges, domedDeckBand: mm(inchesToMm(shortboard.domeNudgeTop.center) + 20) } },
+    }));
+    expect(dome(past)).toBeLessThan(inchesToMm(shortboard.domeNudgeTop.center));
+    expect(captionOf(past, ids.domedDeckBand)).toMatch(/^dashed · -/);
+  });
+});
+
 describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in its box", () => {
   it("reads every mark in whole millimetres in Metric, and Blends From · Ends At as centimetres to one decimal", () => {
     const cards = buildRailsGuide(shortboard, "metric");
@@ -255,7 +317,9 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
     const marks = [ids.thickness, ids.apexThickness, ids.deckMark1, ids.deckMark3, ids.domedDeckBand, ids.bottomTuck1, ids.bottomTuck3];
     for (const id of marks) {
       expect(cards.get(id)!.tag.text, id).toMatch(/^\d+ mm$/);
-      expect(guideCaptionText(cards.get(id)!.caption), id).toMatch(/^dashed · [+-]?\d+ mm( thick)?$/);
+      // The Domed Deck Band's caption is words, "to the stringer", not a figure (quick 261116-tqs).
+      if (id === ids.domedDeckBand) expect(guideCaptionText(cards.get(id)!.caption), id).toBe("dashed · to the stringer");
+      else expect(guideCaptionText(cards.get(id)!.caption), id).toMatch(/^dashed · [+-]?\d+ mm( thick)?$/);
     }
     expect(cards.get(ids.deckProfile)!.tag.text).toMatch(/^\d+ mm · Flat$/);
     expect(cards.get(ids.blends)!.tag.text).toMatch(/^\d+\.\d cm · \d+\.\d cm$/);

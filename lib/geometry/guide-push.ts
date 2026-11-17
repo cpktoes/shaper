@@ -76,6 +76,8 @@ export const GUIDE_PUSH_TABLE: readonly GuidePushEntry[] = [
   { page: "rails", key: "ratioTop", family: "ratio", value: 35 },
   { page: "rails", key: "apex", family: "mark", inches: 1 / 4, metricMm: 6 },
   { page: "rails", key: "deckMark", family: "mark", inches: 1 / 2, metricMm: 13 },
+  // The Domed Deck Band card pushes the dome to the stringer (its slider's top at the section, `railDomeNudgeTops`, quick
+  // 261116-tqs); this 2" is only how far it turns the other way on a board whose dome already sits there.
   { page: "rails", key: "domedBand", family: "mark", inches: 2, metricMm: 50 },
   { page: "rails", key: "tuck1", family: "mark", inches: 1 / 4, metricMm: 6 },
   { page: "rails", key: "tuck3", family: "mark", inches: 3 / 4, metricMm: 19 },
