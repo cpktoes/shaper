@@ -37,7 +37,7 @@ import { Wordmark } from "@/components/wordmark";
 /** The founder's logo in the phone's bar (quick 261010-km7, D-14), sized by the room the bar has
  * rather than by a font. Its width is the window's width less 201 dots, and never more than
  * 175.4 dots, the size the logo draws on a computer — so the brand is one size wherever it has
- * room, and in this 48-dot bar a 21.8-dot-tall logo is already half the height of the 44-dot
+ * room, and in this 48-dot bar a 20.3-dot-tall logo is already under half the height of the 44-dot
  * controls beside it; any larger would crowd the bar. The 201 is the bar's two 16-dot side
  * paddings, plus the right-hand cluster at 149.0 dots (measured at planning time with a touch
  * pointer, in Save's widest face, `min-w-20`, wider than the everyday filled Save button), plus
@@ -47,7 +47,8 @@ import { Wordmark } from "@/components/wordmark";
  * 30.9 at 390 and 52.9 at 412, all above that button's own 8-dot floor
  * (`e2e/board-lock.spec.ts`). The 5.37rem floor is the 85.9 dots the old name's narrowest
  * two-line shape took, so below 287 dots wide it still shrinks to fit as the name did. The
- * `.com` at the end stands 3.6 dots tall at 360 and 4.0 at the full size. Hoisted here (rather
+ * `.com` at the end stands 4.8 dots tall at 360 and 5.2 at the full size (the Inter logo, quick
+ * 261123-dn6). Hoisted here (rather
  * than inlined twice below) so the linked and plain renderings of the logo can never drift. The
  * colour is `text-surf-ink`: the logo is drawn in whatever ink surrounds it, so each theme's own
  * ink follows with nothing else to say. */

@@ -51,7 +51,7 @@ export default function GlobalError({
         <title>{ERROR_COPY.documentTitle}</title>
         <header className="flex flex-none items-center border-b border-surf-line-faint bg-surf-ground px-6 py-6 max-shell:px-4 max-shell:py-4">
           {/* The founder's logo (quick 261010-km7): 20 dots tall like the line of text it replaced,
-              with the 21.8-dot logo centred in it, so the header keeps its exact height. It is
+              with the 20.3-dot logo centred in it, so the header keeps its exact height. It is
               drawn in the text colour around it, which follows the device's light or dark setting. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full page load on purpose: the app's own frame just failed */}
           <a href="/" className="flex h-5 w-[10.96rem] items-center text-surf-ink">

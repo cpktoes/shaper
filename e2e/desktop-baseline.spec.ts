@@ -2,6 +2,18 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-23 (quick 261123-dn6, its worktree branch) — all six pictures, once, for the founder's new Inter logo in
+ * the top row (same width, about 1.5 dots shorter) and, on 3D, the Inter line logo on the back wall. Old and new were compared
+ * pixel by pixel before re-recording (every pixel more than 2 levels of 255 apart): the top row's logo, 1840 pixels in each of
+ * the six, all inside x 48-222, y 29-50; on 3D also the back wall's line logo, 4958 pixels inside x 708-970, y 200-235. Nothing
+ * else moved, apart from two bits of render noise that have nothing to do with a logo: RAILS has 6 single pixels 3 levels
+ * apart (that picture differs by itself, run to run, by a couple of hundred pixels), and 3D has 29 pixels on the board's own
+ * silhouette (x 773-907, y 510-589) that the committed picture already differed in when drawn with the OLD wall logos back in
+ * place. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3123) in the task's worktree on this Mac; the
+ * orchestrator confirms under Turbopack from the main checkout after the merge. SHA-256 (first 8 characters), old to new:
+ * TEMPLATE 1961af50 to 02c822b9, ROCKER 9faa8793 to 07080875, RAILS 0353fffa to f617f6d3, VOLUME bec057d3 to c3629ebb,
+ * FINS bff6ad70 to cef6d358, 3D dbf714b7 to 0c2e0d01.
+ *
  * RE-RECORDED 2026-11-10 (Phase 17, plan 17-17, gap G-17-5, branch worktree-agent-a4bcfdf53a2d8e2d8) — VOLUME only,
  * `volume-desktop.png`, once, for the INPUTS card's foot: "Rail shapes from RAILS" became the founder's sentence "Counts the
  * finished rail shape from RAILS and the bottom contours from BOTTOM.", which wraps over two lines instead of one. Old and new

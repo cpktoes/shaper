@@ -359,12 +359,10 @@ export function OrderForm() {
             261010-km7, D-09/D-12). 8.7em of the wordmark size is 214 dots on screen (the old
             capitals were 309) and its box, 0.859em tall, is no taller than the old line's
             0.864em ascent, so the strip cannot grow; the p's tail paints below the baseline
-            inside the strip's own room. Measured, though, the logo's box still stood 0.16 dot
-            (screen) and 0.64 dot (print) above what the old line gave the strip, so the strip
-            grew by that much; the 0.1em of negative top margin takes that out of the box's
-            share of the strip's height without moving the letters (the baseline stays where
-            it is, the box just reaches into the sheet's own padding), and the board's name then
-            sets the strip's height, as it does in print today. The 7.16em floor is the width of ASSISTANT, the
+            inside the strip's own room. With the founder's Inter letters (quick 261123-dn6) the
+            box above the baseline is 0.790em, 19.5 dots on screen, lower than the board name's
+            own line, so the board's name alone sets the strip's height. The 0.1em of negative top
+            margin is kept because it moves no letter (the baseline holds them). The 7.16em floor is the width of ASSISTANT, the
             narrowest the old text could wrap down to, so a narrow phone sheet can shrink it
             no further than before. */}
         <Wordmark
