@@ -809,7 +809,8 @@ describe("the logos on the walls (the founder, 2026-11-06)", () => {
   });
 
   it("the line logo crosses 57.6% of an end wall at its own shape, its top 20% of the wall down from the ceiling", () => {
-    const aspect = 806.1 / 100;
+    // The line logo's own box, as components/wordmark-path.ts draws it (quick 261123-dn6).
+    const aspect = 1629.93 / 188.77;
     const { widthMm, heightMm, centreYMm } = bayEndLogo(aspect);
     expect(widthMm).toBeCloseTo(0.576 * BAY.widthMm, 9);
     expect(widthMm / heightMm).toBeCloseTo(aspect, 9);

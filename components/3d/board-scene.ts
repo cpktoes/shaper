@@ -83,6 +83,7 @@ import {
   type Viewer,
 } from "@/lib/geometry/shaping-bay";
 import { BOARD_TO_ROOM, quatMultiply, REST_TURN, ROOM_CAMERA, type Quat } from "@/lib/geometry/view-3d";
+import { WORDMARK_HEIGHT, WORDMARK_WIDTH } from "@/components/wordmark-path";
 
 /** The theme's colours the scene paints with, read from the page's tokens (any CSS colour three can parse). */
 export interface SceneColours {
@@ -533,8 +534,8 @@ const BENCH_EYE_CLEAR_MM = 900;
 /** The founder's two logos, white on nothing (`brand/README.md`): the circle on the side walls, the line logo on the end walls. */
 const CIRCLE_LOGO_URL = "/bay-logo-circle.png";
 const LINE_LOGO_URL = "/bay-logo-wordmark.png";
-/** How much wider the line logo is than it is tall: the box `components/wordmark-path.ts` is drawn in. */
-const LINE_LOGO_ASPECT = 806.1 / 100;
+/** How much wider the line logo is than it is tall: the box `components/wordmark-path.ts` is drawn in, which `bay-logo-wordmark.png` is drawn to. */
+const LINE_LOGO_ASPECT = WORDMARK_WIDTH / WORDMARK_HEIGHT;
 /** How far a logo stands off its wall, so the two never fight over which is nearer. */
 const LOGO_STANDOFF_MM = 5;
 

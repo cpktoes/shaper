@@ -83,8 +83,9 @@ export function SiteNav() {
             6.26rem (100.2 dots, the name's width wrapped onto two lines), so the row's flex layout
             sees the same inputs it always did. From 820 to 1023 wide, where the name used to wrap
             onto two lines, the logo shrinks between those two instead and the row is 8 dots
-            shorter, with nothing wrapped. 21.8 dots tall at full width, under the row's tallest
-            control (32), so the row's height is the controls' height, as before. */}
+            shorter, with nothing wrapped. 20.3 dots tall at full width (the Inter logo, 2026-11-23,
+            quick 261123-dn6), under the row's tallest control (32), so the row's height is the
+            controls' height, as before. */}
         <Link
           href="/"
           className="block w-[10.96rem] min-w-[6.26rem] text-surf-ink transition-colors hover:text-surf-accent-ink"
