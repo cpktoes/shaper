@@ -9,6 +9,11 @@ import { expect, test, type Page } from "@playwright/test";
  * onto two lines there) and 81 at 1023, 1024 and 1280; 93 with a touch pointer at 1024 x 640; and
  * the Menu button stood 44 x 44 with its top at 1.5 and its left edge at the window's width less 60,
  * at every phone size below. None of those may move or grow.
+ *
+ * 2026-11-23, quick 261123-dn6: the logo is now the founder's Inter drawing. Its letters are wider
+ * for their height, so at the same width the logo is about 1.5 dots shorter (20.3 instead of 21.8
+ * at full size, 18.4 at 360 wide, 20.2 at 375). Every width, every row height, Save's air and the
+ * Menu button's box are unchanged.
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -76,11 +81,11 @@ test.describe("on a computer the logo takes the room the name took (mouse)", () 
     await prepare(page);
   });
 
-  test("1280 x 800: 175.4 by 21.8, and the row is no taller than before (81)", async ({ page }) => {
+  test("1280 x 800: 175.4 by 20.3, and the row is no taller than before (81)", async ({ page }) => {
     await page.goto("/design/outline");
     const box = await boxOf(logoIn(page, false));
     near(box.width, 175.4);
-    near(box.height, 21.8);
+    near(box.height, 20.3);
     const row = await page.locator("nav:not([aria-label])").boundingBox();
     console.log(`[wordmark] 1280: logo ${box.width.toFixed(2)} x ${box.height.toFixed(2)}, row ${row?.height}`);
     expect(row!.height).toBeLessThanOrEqual(81);
@@ -92,7 +97,7 @@ test.describe("on a computer the logo takes the room the name took (mouse)", () 
       await page.goto("/design/outline");
       const box = await boxOf(logoIn(page, false));
       near(box.width, 175.4);
-      near(box.height, 21.8);
+      near(box.height, 20.3);
       const row = await page.locator("nav:not([aria-label])").boundingBox();
       expect(row!.height).toBeLessThanOrEqual(81);
     });
@@ -142,12 +147,12 @@ test.describe("on a phone the logo grows into the bar's spare room (D-14)", () =
   });
 
   const SIZES: { width: number; height: number; logoWidth: number; logoHeight: number }[] = [
-    { width: 360, height: 740, logoWidth: 159.0, logoHeight: 19.7 },
-    { width: 375, height: 667, logoWidth: 174.0, logoHeight: 21.6 },
-    { width: 390, height: 844, logoWidth: 175.4, logoHeight: 21.8 },
-    { width: 412, height: 915, logoWidth: 175.4, logoHeight: 21.8 },
-    { width: 844, height: 390, logoWidth: 175.4, logoHeight: 21.8 },
-    { width: 863, height: 360, logoWidth: 175.4, logoHeight: 21.8 },
+    { width: 360, height: 740, logoWidth: 159.0, logoHeight: 18.4 },
+    { width: 375, height: 667, logoWidth: 174.0, logoHeight: 20.2 },
+    { width: 390, height: 844, logoWidth: 175.4, logoHeight: 20.3 },
+    { width: 412, height: 915, logoWidth: 175.4, logoHeight: 20.3 },
+    { width: 844, height: 390, logoWidth: 175.4, logoHeight: 20.3 },
+    { width: 863, height: 360, logoWidth: 175.4, logoHeight: 20.3 },
   ];
 
   for (const size of SIZES) {
