@@ -48,9 +48,26 @@ sketch go to a Fable session.
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md`; sketch 016 D
 decided by the founder 2026-10-16 ("This now looks perfect. Let's build it."). Building as a quick task with a BRIEF.
 
+### brd-bottom-fit
+The founder (2026-11-24) asked what BOTTOM changes would let Open a board file (.brd) match a file's bottom closer.
+After quick 261116-tqs, seven of his twelve sample files come in under 1 mm on the bottom; the rest stop where the
+controls run out. Two measurements were asked for before anything is built: (1) a Belly Shape control (how full or soft
+a belly rolls) for 92Log, Scoop-Noserider and testLB; (2) the Spiral Vee: BOTTOM already has one, yet SAtwin (a double
+inside a vee tail) still misses 1.61 mm.
+
+**Requirements:**
+- Measure first; build only on the founder's word, through `/gsd-quick` (one change per quick task).
+- Measured through the real import (`brdLookFromBytes`), widest and typical bottom miss, all twelve files, before and
+  after, plus the open time.
+- The founder's sample files in `~/Downloads` are never committed, copied into the repo or named in a test.
+- The spikes run on Fable (the founder, 2026-11-24, asked for Fable 5.1; Fable 5.2 is the one available).
+- Nothing in the app's own source changes during a spike; trial code lives in scratch and is archived as
+  `spike-source.tar.gz`.
+
 ## Spikes
 
 | # | Idea | Name | Type | Validates | Verdict | Tags |
 |---|------|------|------|-----------|---------|------|
 | 001 | custom-rocker | maker-rocker-conventions | standard | Given the four catalogues and makers' sites, when every rocker section is read, then each maker's naming, measuring, changing and charges are known | ✓ VALIDATED | rocker, catalogue, us-blanks, arctic-foam, marko-foam, millennium-foam |
 | 002 | custom-rocker | custom-rocker-bend | comparison | Given a real blank on the app's square-root curve, when a listed custom rocker is applied as a bend from its point, then tips move exactly, no dip appears, the board takes the new rocker | ✓ VALIDATED (even bend recommended; beam bend within 1.9 mm per inch of change) | rocker, geometry, square-root-curve, fit |
+| 003 | brd-bottom-fit | belly-shape-fit | comparison | Given 92Log, Scoop-Noserider and testLB, when a belly gains one shape number the fit may move, then the widest bottom miss drops under 1 mm and no file gets worse | ✗ INVALIDATED (92Log 1.58→1.56, Scoop 1.18→1.05, testLB unchanged; the widest miss is in the nose, not the belly) | brd-import, bottom, belly, fit |
