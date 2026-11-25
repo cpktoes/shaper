@@ -10,6 +10,12 @@ Patterns and stack choices established across spike sessions. New spikes follow 
   install (`require('/Users/kontoes/Code/shaper/node_modules/playwright')`). The Browser pane can't screenshot a
   local file.
 
+- Trial changes to the app's own code run in a detached git worktree in the spike's scratch folder
+  (`git -C <repo> worktree add --detach <scratch>/wt HEAD`, `node_modules` symlinked from the main checkout), removed
+  with `git worktree remove --force` at the end; the main checkout's source is never touched (spikes 003, 004).
+- .brd fit questions are measured through the real import (`brdLookFromBytes`) on all twelve of the founder's sample
+  files, widest / typical miss and seconds to open, before and after (spikes 003, 004).
+
 ## Structure
 - `.planning/spikes/NNN-name/README.md` plus evidence files (text, PNG).
 - Scratch `.ts`, `.mts` and `.cjs` files never sit loose under `.planning`: TypeScript and lint read them. They go into
