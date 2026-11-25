@@ -3,11 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 // seconds: the cases here are generous rather than flaky.
 vi.setConfig({ testTimeout: 60_000 });
 import { buildBoardSurface } from "../geometry/board-surface";
-import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../geometry/design";
+import { bottomStationSlider } from "../geometry/blank-reasons";
+import { DEFAULT_BOTTOM, keepStationsInOrder, resolveBottom, resolveCut, startingCut, storeCutStation } from "../geometry/bottom";
+import { BRD_BOTTOM_FLAT_MM } from "../geometry/brd-bottom";
+import { designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../geometry/design";
+import { inchesToMm, mm, mmToInches } from "../geometry/units";
 import { buildOutline } from "../geometry/outline";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { brdBoardFields } from "../models/brd-board";
-import { brdText } from "./brd";
+import { brdBottomStations, brdText } from "./brd";
 import { brdFitLook } from "./brd-fit-preview";
 import { brdLookFromBytes } from "./brd-look";
 import { BRD_READ_MAX_BYTES, readAnyBrd } from "./brd-read";
@@ -97,5 +101,42 @@ describe("brdLookFromBytes on a file with fins (quick 261113-qyz)", () => {
     if (!plain.ok) throw new Error("the file would not read");
     expect(plain.look.fins).toBeNull();
     expect(plain.fields?.finSystem).toBe("fcs2");
+  });
+});
+
+/**
+ * A Spiral Vee on its own opens as one (quick 261124-x9h, D-01, D-04): the app's own Mid-length with a Spiral Vee tail and no
+ * centre cut, the vee started well ahead of the name's own Start, saved as a board file and opened again through the real
+ * import. Before this task these opened with a centre Early Double Concave over the tail cut.
+ */
+describe("brdLookFromBytes on a board with a Spiral Vee tail and no centre cut (quick 261124-x9h)", () => {
+  const mid = phase16Boards().find((b) => b.label === "midlength|asis|hard")!.fields;
+  const spiralBytes = (sixteenths: number, aheadIn: number) => {
+    const geometry = buildOutline(mid.outline);
+    const profile = designSideProfile(mid, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(mid.rails, profile.effectiveFoil, mid.railsImportFoilThickness);
+    const board = designBottomBoard(mid.outline, geometry, profile, designFinPlacement(mid));
+    const base = { ...startingCut("tail", "Spiral Vee", board), depth: inchesToMm(sixteenths / 16) };
+    // On BOTTOM's own Start slider: half inches from the nose.
+    const slider = bottomStationSlider(mm(0), board.length, "imperial");
+    const station = slider.toMm(Math.round(mmToInches(mm(board.length - (resolveCut("tail", base, board).start + inchesToMm(aheadIn)))) * 2) / 2);
+    const tail = keepStationsInOrder("tail", { ...base, ...storeCutStation("tail", "start", station, board) }, "start", board, "narrowest");
+    const bottom = { ...structuredClone(DEFAULT_BOTTOM), tail };
+    const surface = buildBoardSurface({ sections: designCrossSectionInput(geometry, profile, rails, mid.outline.length, { bottom, board }), geometry, rockerAt: profile.rockerAt });
+    return Uint8Array.from(brdText(surface, { bottomStations: brdBottomStations(resolveBottom(bottom, board)) }).text, (ch) => ch.charCodeAt(0));
+  };
+
+  it.each([
+    ["1/8\" deep, started 26\" further up the board", 2, 26],
+    ["3/16\" deep, started 26\" further up the board", 3, 26],
+  ] as const)("a Spiral Vee %s opens as a Spiral Vee alone, within a millimetre of the file", (_name, sixteenths, ahead) => {
+    const result = brdLookFromBytes(spiralBytes(sixteenths, ahead), "Spiral.brd");
+    if (!result.ok) throw new Error("the file would not read");
+    const fitted = result.look.bottom!;
+    expect([fitted.bottom.nose.name, fitted.bottom.center.name, fitted.bottom.tail.name]).toEqual(["Flat Entry", "Flat Center", "Spiral Vee"]);
+    expect(fitted.closeness.largest).toBeLessThan(BRD_BOTTOM_FLAT_MM);
+    // The board it opens as carries that bottom: one tail cut, nothing in the centre.
+    expect(result.fields?.bottom?.center.name).toBe("Flat Center");
+    expect(result.fields?.bottom?.tail.name).toBe("Spiral Vee");
   });
 });

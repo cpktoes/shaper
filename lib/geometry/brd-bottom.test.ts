@@ -577,6 +577,25 @@ describe("round trips: a board with a known bottom, written, read back and fitte
   it.each(moved.slice(0, 4).map((c) => [c.name, c] as const))("the Shortboard with sliders moved: %s", (_name, c) => check(c, SHORT, true), LONG);
   it("the Shortboard with a three-cut mix whose sliders were moved: every kind and depth comes back", () => check(moved[4], SHORT, false), LONG);
   it.each(mixes.map((c) => [c.name, c] as const))("the Mid-length with the mix %s", (_name, c) => check(c, MID, false), LONG);
+
+  /**
+   * A Spiral Vee on its own, started well ahead of the name's own Start (quick 261124-x9h, D-01, D-04). Before this task the
+   * fit never scored "no centre cut + Spiral Vee" on such a file: the seed reached for a centre Early Double Concave over a
+   * tail vee, and the fit swaps one section at a time, so the Spiral Vee alone was two swaps away. These three came back as
+   * Early Double Concave + Spiral Vee, Early Double Concave + Panel Vee and Early Double Concave + Panel Vee.
+   */
+  const spiralStart = (ahead: number) => (b: BottomBoard) => onGrid(b, resolveCut("tail", startingCut("tail", "Spiral Vee", b), b).start + I(ahead));
+  const spiralAlone: Case[] = [
+    { name: "Spiral Vee 1/8\" started 20\" further up the board", cuts: { tail: { name: "Spiral Vee", steps: 2, moves: [{ field: "start", station: spiralStart(20) }] } } },
+    { name: "Spiral Vee 1/8\" started 26\" further up the board", cuts: { tail: { name: "Spiral Vee", steps: 2, moves: [{ field: "start", station: spiralStart(26) }] } } },
+    { name: "Spiral Vee 3/16\" started 26\" further up the board", cuts: { tail: { name: "Spiral Vee", steps: 3, moves: [{ field: "start", station: spiralStart(26) }] } } },
+  ];
+  it.each(spiralAlone.map((c) => [c.name, c] as const))("the Mid-length with a %s comes back as a Spiral Vee with no centre cut", (_name, c) => {
+    check(c, MID, false);
+    const { found } = fitText(MID.write(bottomOf(c, MID.board)));
+    expect([found.bottom.nose.name, found.bottom.center.name, found.bottom.tail.name]).toEqual(["Flat Entry", "Flat Center", "Spiral Vee"]);
+    expect(found.closeness.largest).toBeLessThan(BRD_BOTTOM_FLAT_MM);
+  }, LONG);
 });
 
 describe("the stringer lift", () => {

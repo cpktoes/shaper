@@ -39,6 +39,16 @@
  *     instead (the Tri-Plane led by 0.55 and 0.09 mm), and so does quadtesting (0.86 mm; its vee tail is deeper than the
  *     Panel Vee reaches, so either centre cut stands in for it). A 7/16" or deeper Tri-Plane the app wrote itself still
  *     comes back as one, 1.5 to 2.85 mm clear.
+ *     **The Spiral Vee on its own** (quick 261124-x9h, the founder, 2026-11-24, spike 004: "I'd also like to tackle the spiral
+ *     vee issue (double concave inside a vee tail)"). The names are swapped one section at a time, so when the closest
+ *     bottoms hold a centre double concave over a tail Spiral Vee, the Spiral Vee with nothing in the centre (the cut that
+ *     draws a double running out through a vee tail) is two swaps away and was never tried. So beside each of the four closest
+ *     (the refined seed and the three refined in full) that holds that pair, two more bottoms are offered, both with their
+ *     sliders free: that bottom with the centre flat, and the Spiral Vee afresh from its own starting numbers at its closest
+ *     depth, under a flat centre (`spiralVeeAlone`). The choice above then runs unchanged. Measured through the real import on
+ *     the founder's twelve files: SAtwin opens as a Spiral Vee alone, 0.39 mm off at the widest where it was 1.61 mm (as an
+ *     Early Double Concave over a Panel Vee that stopped short of the tail); the other eleven open exactly as before; about
+ *     0.1 s more on SAtwin, nothing on the others.
  *  6. **Polishes the chosen bottom** (quick 261116-tqs, the founder, 2026-11-16: "let the fit land anywhere", after asking for the
  *     worst miss under half a millimetre). Stages 4 and 5 stay on BOTTOM's own steps (that grid chooses the names, and its rules
  *     stand exactly as written above). Once the names and the order of rails and bottom are settled, `polishBrdBottom` moves
@@ -49,8 +59,10 @@
  *     polished inside every one of a file's up to three bottom fits it changed which order won on the founder's longboard (its
  *     bottom went from 2.39 to 3.65 mm). Measured through the real import on the founder's twelve files, the widest miss fell
  *     from 1.04 to 0.49 mm (the Fryer), 0.95 to 0.55 (the Round Tail), 0.83 to 0.54 (the Groveler), 0.66 to 0.40 (SAtri) and
- *     2.14 to 1.58 mm (92Log), and no file got worse. What stays out of reach is the model, not the search: a double inside a
- *     vee tail, a belly across, a 29 mm vee past Depth's half inch, the wobble in a file's flat sections.
+ *     2.14 to 1.58 mm (92Log), and no file got worse. What stays out of reach is the model, not the search: a belly across, a
+ *     29 mm vee past Depth's half inch, the wobble in a file's flat sections. (A double inside a vee tail was once on this
+ *     list; it was the name choice, not the model: the Spiral Vee as it is draws SAtwin's tail to 0.39 mm, spike 004, and
+ *     stage 5 now offers it.)
  *
  * **Between the file's sections.** An AkuShaper file holds only 3 to 5 usable sections, and a slider fitted to so few can fade
  * a cut in and out between two of them where nothing is measured (measured: a 7/16" nose concave fading from nothing to full
@@ -82,6 +94,7 @@ import {
   BOTTOM_MARK_STEP_IN,
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
+  FLAT_CUT_NAMES,
   TAIL_VEE_NAMES,
   cutFoamOffParts,
   cutKind,
@@ -985,10 +998,37 @@ export interface BrdBottomFit {
 }
 
 /**
+ * The Spiral Vee on its own, offered beside a close candidate that has a centre double concave over a tail Spiral Vee (the
+ * founder, 2026-11-24, quick 261124-x9h, spike 004). A file whose double concave runs out through a vee tail, with nothing
+ * cut in the centre, is drawn by the Spiral Vee alone; but the fit swaps one section's name at a time, so from a centre
+ * double over a Spiral Vee, "no centre cut and a Spiral Vee" is two swaps away and was never scored. Two candidates, each
+ * with its sliders free: that same bottom with the centre flat, and the Spiral Vee afresh from its own starting numbers at
+ * whichever Depth step scores closest, under a flat centre. Nothing for any other candidate. The choice rules then weigh them
+ * like any other candidate (`chooseBrdBottom`, unchanged).
+ */
+function spiralVeeAlone(specs: Specs, scorer: ReturnType<typeof brdBottomScorer>, board: BottomBoard): { specs: Specs; value: number }[] {
+  if (specs.tail.name !== "Spiral Vee" || cutKind(specs.center.name) !== "double") return [];
+  const flatCenter = startingCut("center", FLAT_CUT_NAMES.center, board);
+  let fresh: Specs | null = null;
+  let freshValue = Infinity;
+  for (let steps = 1; steps <= DEPTH_STEPS; steps++) {
+    const tried: Specs = { ...specs, center: flatCenter, tail: specOfPick("tail", { name: "Spiral Vee", steps }, board, "Spiral Vee") };
+    const value = scorer.valueOfSpecs(tried);
+    if (value < freshValue) {
+      freshValue = value;
+      fresh = tried;
+    }
+  }
+  return [scorer.refine({ ...specs, center: flatCenter }), scorer.refine(fresh!)];
+}
+
+/**
  * Fits BOTTOM's three cuts to the sections of a file on `board0` (the board that opens: `brdFittedBottomBoard`): the seed
  * (stage 1, over the file's own sections), the refined seed, then every other name of each section put in its place with its
- * sliders free, the closest three refined in full, and the choice (the seed's names unless another cut brings the fit
- * `BRD_BOTTOM_EXTRA_CUT_MM` closer; of those within that, the fewest cuts). Null when the file has no section the fit can use.
+ * sliders free, the closest three refined in full, the Spiral Vee on its own beside any of those four that has a centre double
+ * over a tail Spiral Vee (`spiralVeeAlone`, quick 261124-x9h), and the choice (the seed's names unless another cut brings the
+ * fit `BRD_BOTTOM_EXTRA_CUT_MM` closer; of those within that, the fewest cuts). Null when the file has no section the fit can
+ * use.
  */
 export function fitBottomToBrd(
   sections: readonly BrdSectionLine[],
@@ -1032,6 +1072,9 @@ export function fitBottomToBrd(
   }
   neighbours.sort((a, b) => a.value - b.value);
   const pool = [best, ...neighbours.slice(0, FULL_NEIGHBOURS).map((n) => scorer.refine(n.specs)), ...neighbours.slice(FULL_NEIGHBOURS)];
+  // The Spiral Vee on its own, for a close candidate with a centre double over a tail Spiral Vee (quick 261124-x9h).
+  const spiral = pool.slice(0, 1 + FULL_NEIGHBOURS).flatMap((candidate) => spiralVeeAlone(candidate.specs, scorer, board));
+  pool.push(...spiral);
   const chosen = chooseBrdBottom(pool, best);
 
   return measureBrdBottom(bottomOfSpecs(chosen.specs), read, board0);
