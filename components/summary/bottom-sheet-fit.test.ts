@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOTTOM_COPY, layoutMarksNote, referenceRowsNote } from "@/components/bottom/bottom-copy";
-import { BOTTOM_GUIDE_WORDS, guideHow } from "@/components/bottom/bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, guideHow, guideHowOnPaper, RAIL_ROLL_HOW } from "@/components/bottom/bottom-guide-words";
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { widePointWidthRangeIn } from "@/lib/geometry/board-size";
@@ -15,6 +15,8 @@ import {
   startingChannels,
   startingCut,
   stationFromNearestTip,
+  takesRailRoll,
+  tidyRailRoll,
   type BoardBottom,
   type BottomBoard,
   type BottomCutName,
@@ -174,8 +176,11 @@ describe("bottomSheetLayout: what the page carries", () => {
         const key = cut.key === "channels" ? "Channels" : c.resolved[cut.key].name;
         const card = BOTTOM_GUIDE_WORDS.find((w) => w.key === key)!;
         expect(card, `no GUIDE card for ${key}`).toBeDefined();
-        expect(layout.notes[index]).toEqual({ head: cut.head, how: guideHow(card, system) });
+        // The paper's note: the GUIDE's own, the Rail Roll's line kept only where the cut has a roll (quick 261125-v2j).
+        const roll = cut.key === "channels" ? 0 : c.resolved[cut.key].railRoll;
+        expect(layout.notes[index]).toEqual({ head: cut.head, how: guideHowOnPaper(card, system, roll) });
         expect(layout.notes[index].how.length).toBeGreaterThan(0);
+        if (roll === 0) expect(layout.notes[index].how.endsWith(RAIL_ROLL_HOW), key).toBe(false);
       });
     }
   });
@@ -367,6 +372,45 @@ describe("bottomSheetLayout: what the page carries", () => {
       expect(over.dataRows).toHaveLength(25);
       expect(over.tablesSplit).toBe(true);
       expect(over.sheets).toBe(3);
+    }
+  });
+});
+
+/** The nose concaves that take a Rail Roll: the maths' own rule (quick 261125-mf8). */
+const ROLLING_NOSES = BOTTOM_CUT_NAMES.nose.filter((name) => takesRailRoll("nose", name));
+
+/**
+ * A cut in every section and 8 channels (`SETS.every8`) with this nose concave, its Rail Roll set as BOTTOM's slider sets
+ * it — through `tidyRailRoll`, so 0 stores no key at all, exactly as a board that never rolled.
+ */
+function rolledEvery8(board: BottomBoard, nose: BottomCutName, rollMm: number): BoardBottom {
+  const bottom = bottomOf(board, { ...SETS.every8.names, nose }, SETS.every8.count);
+  bottom.nose = tidyRailRoll("nose", { ...bottom.nose, railRoll: rollMm as BoardBottom["nose"]["railRoll"] });
+  return bottom;
+}
+
+describe("the Rail Roll's line on paper (the founder, 2026-11-25, quick 261125-v2j)", () => {
+  it.each(BOARDS.map((b) => [b.id, b] as const))("%s — a nose concave with a roll prints the line; with none, the note it always printed", (_, built) => {
+    for (const nose of ROLLING_NOSES) {
+      const card = BOTTOM_GUIDE_WORDS.find((w) => w.key === nose)!;
+      const rolled = resolveBottom(rolledEvery8(built.board, nose, inchesToMm(1 / 8)), built.board);
+      const flat = resolveBottom(rolledEvery8(built.board, nose, 0), built.board);
+      expect(rolled.nose.railRoll).toBeGreaterThan(0);
+      expect(flat.nose.railRoll).toBe(0);
+      for (const system of UNITS_SYSTEMS) {
+        const withRoll = bottomSheetLayout(rolled, built.board, system, built.frontPair);
+        const noseNote = withRoll.notes[withRoll.cuts.findIndex((cut) => cut.key === "nose")];
+        expect(noseNote.how, `${nose} ${system}`).toBe(guideHow(card, system));
+        expect(noseNote.how.endsWith(` ${RAIL_ROLL_HOW}`), `${nose} ${system}`).toBe(true);
+        const without = bottomSheetLayout(flat, built.board, system, built.frontPair);
+        const plainNote = without.notes[without.cuts.findIndex((cut) => cut.key === "nose")];
+        expect(plainNote.how, `${nose} ${system}`).toBe(guideHowOnPaper(card, system, 0));
+        expect(plainNote.how, `${nose} ${system}`).not.toContain(RAIL_ROLL_HOW);
+        // Only the nose's note changes: every other cut prints the note it always did.
+        withRoll.notes.forEach((note, i) => {
+          if (withRoll.cuts[i].key !== "nose") expect(note, `${nose} ${system}`).toEqual(without.notes[i]);
+        });
+      }
     }
   });
 });

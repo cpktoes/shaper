@@ -7,6 +7,10 @@
  * here — no drawing, no markup, no sum; the cards draw these strings as plain text.
  *
  * One figure in the words is said differently in each system (the founder, 2026-11-09) — see `GUIDE_SPACING` below.
+ *
+ * And one line is printed on paper only some of the time (the founder, 2026-11-25, quick 261125-v2j): the Rail Roll's
+ * line, `RAIL_ROLL_HOW`, ends the three nose concaves' How to shape. The GUIDE always shows it; the printed bottom page
+ * carries it only on a board whose nose concave has a Rail Roll above 0 — see `guideHowOnPaper`.
  */
 import type { BottomCutName, BottomSectionKey } from "@/lib/geometry/bottom";
 import type { UnitsSystem } from "@/lib/geometry/units";
@@ -40,6 +44,29 @@ export function guideHow(card: BottomGuideCard, system: UnitsSystem): string {
   return card.how.split(GUIDE_SPACING.imperial).join(GUIDE_SPACING.metric);
 }
 
+/**
+ * How to cut a nose concave's Rail Roll, in the founder's words (2026-11-25, quick 261125-v2j: "Use 1, add it to the
+ * three nose concave cards"). It ends the How to shape of the three nose concaves that take a Rail Roll — the Teardrop
+ * Nose Concave, the Blended Nose Concave and the Slight Single Concave Entry. The GUIDE always shows it; the printed
+ * bottom page prints it only on a board whose nose concave has a Rail Roll above 0 (`guideHowOnPaper`). It carries no
+ * figure, so it reads the same in both systems.
+ */
+export const RAIL_ROLL_HOW =
+  "Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it smooth.";
+
+/**
+ * A card's How to shape note as the printed bottom page carries it: the GUIDE's own (`guideHow`) when the cut's Rail
+ * Roll is above 0 — the same rule as the printed cut sentence, which names the roll only above 0 — and otherwise the
+ * same words with the Rail Roll's line taken off their end. Only an exact trailing line is taken off, so no other words
+ * can ever change; a card that does not end with it prints as the GUIDE writes it, whatever the roll.
+ */
+export function guideHowOnPaper(card: BottomGuideCard, system: UnitsSystem, railRoll: number): string {
+  const how = guideHow(card, system);
+  if (railRoll > 0) return how;
+  const line = ` ${RAIL_ROLL_HOW}`;
+  return how.endsWith(line) ? how.slice(0, -line.length) : how;
+}
+
 /** The nineteen cards in the page's order: Nose, Center, Tail, then Channels (cut last, inside TAIL). */
 export const BOTTOM_GUIDE_WORDS: readonly BottomGuideCard[] = [
   {
@@ -61,21 +88,21 @@ export const BOTTOM_GUIDE_WORDS: readonly BottomGuideCard[] = [
     section: "nose",
     is: "A single concave widest under the nose, closing to a point before the center.",
     does: "A noserider's lift: it holds air and water under the nose so it rides high with you standing on it.",
-    how: "Pencil the edge at Off Rail from the tip back and close it to a point at End. Hollow along the stringer in shallow planer passes from Start, deepest at Deepest, then blend out to the pencil line with a flexible pad; a straightedge across the nose shows the depth.",
+    how: `Pencil the edge at Off Rail from the tip back and close it to a point at End. Hollow along the stringer in shallow planer passes from Start, deepest at Deepest, then blend out to the pencil line with a flexible pad; a straightedge across the nose shows the depth. ${RAIL_ROLL_HOW}`,
   },
   {
     key: "Blended Nose Concave",
     section: "nose",
     is: "A shallow single under the nose that fades into the center without an edge.",
     does: "Lifts the entry of a longboard or mid-length without the teardrop's drag.",
-    how: "As the teardrop, but with no edge: carry the hollow out to the pencil line with a soft pad so no step is left, and fade it to nothing by End.",
+    how: `As the teardrop, but with no edge: carry the hollow out to the pencil line with a soft pad so no step is left, and fade it to nothing by End. ${RAIL_ROLL_HOW}`,
   },
   {
     key: "Slight Single Concave Entry",
     section: "nose",
     is: "The faintest single concave from the nose back, barely a gauge mark deep.",
     does: "Quickens the entry and leads the water into the center's concave.",
-    how: "A few shallow planer passes along the stringer from Start, screened out to Off Rail — a straightedge should show the gap you set and no more.",
+    how: `A few shallow planer passes along the stringer from Start, screened out to Off Rail — a straightedge should show the gap you set and no more. ${RAIL_ROLL_HOW}`,
   },
   {
     key: "Reverse Vee Nose",

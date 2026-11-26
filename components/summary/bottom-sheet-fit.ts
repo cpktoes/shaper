@@ -18,7 +18,7 @@
  * board's own measurement, so no inch or millimetre figure appears here (CLAUDE.md Rule 2).
  */
 import { BOTTOM_COPY, layoutMarksNote, referenceRowsNote } from "@/components/bottom/bottom-copy";
-import { BOTTOM_GUIDE_WORDS, guideHow } from "@/components/bottom/bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, guideHowOnPaper } from "@/components/bottom/bottom-guide-words";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   bottomDataRows,
@@ -78,7 +78,10 @@ export function bottomTopViewBox(
 /** DATA's layout marks: a column per mark in shop order, a row per station. */
 export type BottomLayoutMarks = ReturnType<typeof bottomLayoutMarks>;
 
-/** One How to shape note: the cut's head and the GUIDE's own words for it. */
+/**
+ * One How to shape note: the cut's head and the GUIDE's own words for it, as paper prints them — the Rail Roll's line
+ * only on a nose concave whose Rail Roll is above 0 (`guideHowOnPaper`, quick 261125-v2j).
+ */
 export interface BottomSheetNote {
   head: string;
   how: string;
@@ -218,11 +221,16 @@ const PAGE = {
   spare: 4,
 } as const;
 
-/** The cut's GUIDE card: a section's cut by its name, the channels by their own card. */
+/**
+ * The cut's GUIDE card: a section's cut by its name, the channels by their own card. Its note is the paper's
+ * (`guideHowOnPaper`): the Rail Roll's line is kept only when the cut's own Rail Roll is above 0 — 0 on the channels
+ * and on every cut that takes none (quick 261125-v2j).
+ */
 function noteFor(cut: BottomPrintCut, resolved: ResolvedBottom, system: UnitsSystem): BottomSheetNote {
   const key = cut.key === "channels" ? "Channels" : resolved[cut.key].name;
+  const roll = cut.key === "channels" ? 0 : resolved[cut.key].railRoll;
   const card = BOTTOM_GUIDE_WORDS.find((c) => c.key === key);
-  return { head: cut.head, how: card ? guideHow(card, system) : "" };
+  return { head: cut.head, how: card ? guideHowOnPaper(card, system, roll) : "" };
 }
 
 /** How many lines this many letters of a note take. */
