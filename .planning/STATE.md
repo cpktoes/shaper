@@ -37,7 +37,7 @@ Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27, archi
 Phase: none — no milestone open
 Plan: —
 Status: Awaiting the next milestone
-Last activity: 2026-11-26 - Completed quick task 261126-czw (four code-review points on the Rail Roll) after spikes 008/009 and the parked 261126-akp; pushing on the founder's word
+Last activity: 2026-11-26 - Pushed: main c2336314 is live (the Rail Roll on the three nose concaves, its GUIDE line, a .brd nose concave back with its roll, the four review fixes; spikes 005–009 and the parked 261126-akp recorded)
 
 ## Performance Metrics
 
