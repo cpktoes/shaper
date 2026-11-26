@@ -161,4 +161,43 @@ test.describe("BOTTOM's Rail Roll on a nose concave", () => {
     await expect.poll(() => rollMm(page, "metric"), { timeout: 20_000 }).toBeCloseTo(tenth - BOTTOM_DEPTH_STEP_MM, 3);
     expect(await rollLine(page)).toMatch(/^Rail Roll — \d+\.\d mm$/);
   });
+
+  test("at Depth 0 the Rail Roll greys out still showing the roll, survives a reload, and comes back live as it was (quick 261126-czw, D-01)", async ({ page }) => {
+    test.setTimeout(420_000);
+    await openBottom(page);
+    await pick(page, "nose", NOSE_CUT);
+    await expect.poll(() => sliderNames(page, "nose")).toContain(ROLL_SLIDER);
+
+    // Rail Roll to 1/8": eight presses of 1/64".
+    const roll = page.getByRole("slider", { name: ROLL_SLIDER, exact: true });
+    await roll.focus();
+    const presses = Math.round(1 / 8 / BOTTOM_DEPTH_STEP_IN);
+    for (let k = 0; k < presses; k++) await page.keyboard.press("ArrowRight");
+    const set = inchesToMm(presses * BOTTOM_DEPTH_STEP_IN);
+    await expect.poll(() => rollMm(page, "imperial"), { timeout: 20_000 }).toBeCloseTo(set, 3);
+    const line = await rollLine(page);
+    expect(line).toBe(`${BOTTOM_COPY.railRoll} — ${fold(formatBottomDepth(mm(set), "imperial"))}`);
+    await expect(roll).toBeEnabled();
+
+    // Depth to 0: the row greys and its slider stills, still reading the roll the shaper set.
+    const depth = page.getByRole("slider", { name: BOTTOM_COPY.sliderName("nose", BOTTOM_COPY.depth), exact: true });
+    await depth.focus();
+    await page.keyboard.press("Home");
+    await expect(roll).toBeDisabled({ timeout: 20_000 });
+    expect(await rollLine(page)).toBe(line);
+
+    // A reload at Depth 0 keeps the roll and the greyed row.
+    await expect(async () => {
+      await page.reload();
+      await expect(page).toHaveURL(/\/design\/bottom$/, { timeout: 5_000 });
+      expect(await rollLine(page)).toBe(line);
+      await expect(page.getByRole("slider", { name: ROLL_SLIDER, exact: true })).toBeDisabled({ timeout: 2_000 });
+    }).toPass({ timeout: 60_000 });
+
+    // Depth above 0 again: the row is live with the same roll, untouched.
+    await page.getByRole("slider", { name: BOTTOM_COPY.sliderName("nose", BOTTOM_COPY.depth), exact: true }).focus();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("slider", { name: ROLL_SLIDER, exact: true })).toBeEnabled({ timeout: 20_000 });
+    expect(await rollLine(page)).toBe(line);
+  });
 });

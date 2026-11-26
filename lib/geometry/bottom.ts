@@ -409,7 +409,10 @@ export interface ResolvedCut {
   troughStart: Mm;
   /** By hand: the trough's distance off the stringer at End — Trough At when none is stored (D-06). */
   troughEnd: Mm;
-  /** A nose concave's Rail Roll (quick 261125-mf8): the stored one through `railRollOf`, 0 on every other cut. */
+  /**
+   * A nose concave's Rail Roll (quick 261125-mf8): the roll the cut carries, `railRollInUse` — the stored one through
+   * `railRollOf`, and 0 while the cut's Depth is 0 (quick 261126-czw, D-01); 0 on every other cut.
+   */
   railRoll: Mm;
 }
 
@@ -479,7 +482,7 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
     troughRun: spec.troughRun ?? "parallel",
     troughStart: spec.troughStart ?? spec.troughAt,
     troughEnd: spec.troughEnd ?? spec.troughAt,
-    railRoll: railRollOf(section, spec),
+    railRoll: railRollInUse(section, spec),
   };
 }
 
@@ -496,6 +499,17 @@ export function takesRailRoll(section: BottomSectionKey, name: BottomCutName): b
 export function railRollOf(section: BottomSectionKey, spec: Pick<BottomCutSpec, "name" | "railRoll">): Mm {
   const roll = spec.railRoll;
   return takesRailRoll(section, spec.name) && typeof roll === "number" && Number.isFinite(roll) && roll > 0 ? roll : mm(0);
+}
+
+/**
+ * The Rail Roll a cut actually carries: the stored roll (`railRollOf`) while its Depth is above 0, and none at Depth 0.
+ * A nose concave at Depth 0 cuts nothing, roll included (`cutFoamOffParts`), so every question a shaper sees about a roll
+ * (the floor notes, the printed cut, the Board file preview) answers no there. The stored roll is kept all the same:
+ * `railRollOf` and `tidyRailRoll` never read the depth, so dragging Depth to 0 and back brings the shaper's roll back
+ * as it was (the founder, 2026-11-26, quick 261126-czw, D-01).
+ */
+export function railRollInUse(section: BottomSectionKey, spec: Pick<BottomCutSpec, "name" | "railRoll" | "depth">): Mm {
+  return spec.depth > 0 ? railRollOf(section, spec) : mm(0);
 }
 
 /**
