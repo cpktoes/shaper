@@ -4,15 +4,16 @@ import { describe, expect, it, vi } from "vitest";
 vi.setConfig({ testTimeout: 60_000 });
 import { buildBoardSurface } from "../geometry/board-surface";
 import { bottomStationSlider } from "../geometry/blank-reasons";
-import { DEFAULT_BOTTOM, keepStationsInOrder, resolveBottom, resolveCut, startingCut, storeCutStation } from "../geometry/bottom";
+import { BOTTOM_MARK_RANGES_IN, DEFAULT_BOTTOM, keepStationsInOrder, resolveBottom, resolveCut, startingCut, storeCutStation } from "../geometry/bottom";
 import { BRD_BOTTOM_FLAT_MM } from "../geometry/brd-bottom";
 import { designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../geometry/design";
-import { inchesToMm, mm, mmToInches } from "../geometry/units";
+import { formatBottomDepth, formatMark } from "../geometry/measure-display";
+import { inchesToMm, mm, mmToInches, UNITS_SYSTEMS } from "../geometry/units";
 import { buildOutline } from "../geometry/outline";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { brdBoardFields } from "../models/brd-board";
 import { brdBottomStations, brdText } from "./brd";
-import { brdFitLook } from "./brd-fit-preview";
+import { BRD_FIT_COPY, brdFitLook, brdFitSheet } from "./brd-fit-preview";
 import { brdLookFromBytes } from "./brd-look";
 import { BRD_READ_MAX_BYTES, readAnyBrd } from "./brd-read";
 
@@ -138,5 +139,49 @@ describe("brdLookFromBytes on a board with a Spiral Vee tail and no centre cut (
     // The board it opens as carries that bottom: one tail cut, nothing in the centre.
     expect(result.fields?.bottom?.center.name).toBe("Flat Center");
     expect(result.fields?.bottom?.tail.name).toBe("Spiral Vee");
+  });
+});
+
+/**
+ * A nose concave with a Rail Roll comes back as one (quick 261125-mf8, D-05, D-08): the app's own Mid-length and Fish, each
+ * with a Blended Nose Concave 3/16" deep and a 1/4" Rail Roll at the name's starting stations, saved as a board file and
+ * opened again through the real import. Before this task they opened with no roll, over a millimetre off.
+ */
+describe("brdLookFromBytes on a board with a rolled nose concave (quick 261125-mf8)", () => {
+  const rolledBytes = (label: string) => {
+    const f = phase16Boards().find((b) => b.label === label)!.fields;
+    const geometry = buildOutline(f.outline);
+    const profile = designSideProfile(f, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(f.rails, profile.effectiveFoil, f.railsImportFoilThickness);
+    const board = designBottomBoard(f.outline, geometry, profile, designFinPlacement(f));
+    const nose = { ...startingCut("nose", "Blended Nose Concave", board), depth: inchesToMm(3 / 16), railRoll: inchesToMm(1 / 4) };
+    const bottom = { ...structuredClone(DEFAULT_BOTTOM), nose };
+    const surface = buildBoardSurface({ sections: designCrossSectionInput(geometry, profile, rails, f.outline.length, { bottom, board }), geometry, rockerAt: profile.rockerAt });
+    return Uint8Array.from(brdText(surface, { bottomStations: brdBottomStations(resolveBottom(bottom, board)) }).text, (ch) => ch.charCodeAt(0));
+  };
+
+  it.each([
+    ["the Mid-length", "midlength|asis|hard"],
+    ["the Fish", "fish|asis|hard"],
+  ] as const)("%s opens with a Blended Nose Concave and its Rail Roll, within a millimetre, and the preview names the roll", (_name, label) => {
+    const result = brdLookFromBytes(rolledBytes(label), "Rolled.brd");
+    if (!result.ok) throw new Error("the file would not read");
+    const fitted = result.look.bottom!;
+    const nose = fitted.bottom.nose;
+    expect(nose.name).toBe("Blended Nose Concave");
+    expect(nose.railRoll).toBeDefined();
+    expect(nose.railRoll!).toBeGreaterThan(inchesToMm(1 / 8));
+    expect(nose.railRoll!).toBeLessThanOrEqual(inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max) + 1e-9);
+    expect(fitted.closeness.largest).toBeLessThan(BRD_BOTTOM_FLAT_MM);
+    // The board it opens as carries that very roll on its nose.
+    expect(result.fields?.bottom?.nose.name).toBe("Blended Nose Concave");
+    expect(result.fields?.bottom?.nose.railRoll).toBe(nose.railRoll);
+    // The preview's Across cell for the nose: Off Rail's words, a middle dot, then the Rail Roll read as a depth.
+    for (const system of UNITS_SYSTEMS) {
+      const sheet = brdFitSheet(result.look, "Rolled.brd", system);
+      if (!sheet.bottom.read) throw new Error("the bottom was not read");
+      const across = sheet.bottom.rows.find((row) => row.key === "across")!.cells[0];
+      expect(across).toBe(`${BRD_FIT_COPY.bottomSliderWords.offRail} ${formatMark(nose.offRail, system)} · ${BRD_FIT_COPY.bottomSliderWords.railRoll} ${formatBottomDepth(nose.railRoll!, system)}`);
+    }
   });
 });

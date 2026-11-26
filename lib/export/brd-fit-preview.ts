@@ -22,6 +22,7 @@ import { formatBottomStation } from "../geometry/blank-reasons";
 import {
   DEFAULT_BOTTOM,
   cutKind,
+  railRollOf,
   resolveBottom,
   resolveCut,
   stationFromNearestTip,
@@ -698,7 +699,16 @@ export const BRD_FIT_COPY = {
   bottomSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
   bottomColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<BottomSectionKey, string>,
   bottomRowLabels: { at: "Read at", file: "The file", fit: "Our fit", stations: "Start · Deepest At · End", across: "Across" } as const,
-  bottomSliderWords: { start: "Start", deepestAt: "Deepest At", end: "End", offRail: "Off Rail", offStringer: "Off Stringer", troughAt: "Trough At" } as const,
+  bottomSliderWords: {
+    start: "Start",
+    deepestAt: "Deepest At",
+    end: "End",
+    offRail: "Off Rail",
+    offStringer: "Off Stringer",
+    troughAt: "Trough At",
+    // A nose concave's Rail Roll (quick 261125-mf8).
+    railRoll: "Rail Roll",
+  } as const,
   fromNose: (list: string) => `${list} from the nose`,
   fromTail: (list: string) => `${list} from the tail`,
   noValue: "—",
@@ -1065,8 +1075,8 @@ export function brdBottomFrames(rows: readonly BrdBottomRow[], height: SectionHe
 const cutWords = (spec: BottomCutSpec, system: UnitsSystem): string =>
   cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatBottomDepth(spec.depth, system)}`;
 
-/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
-function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
+/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), then a nose concave's Rail Roll when it has one (quick 261125-mf8, read as a depth is), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
+function acrossWords(key: BottomSectionKey, spec: BottomCutSpec, system: UnitsSystem): string {
   const w = BRD_FIT_COPY.bottomSliderWords;
   const kind = cutKind(spec.name);
   const mark = (word: string, value: Mm) => `${word} ${formatMark(value, system)}`;
@@ -1075,7 +1085,10 @@ function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
     if (spec.offStringer > 0) parts.push(mark(w.offStringer, spec.offStringer));
     return parts.join(" · ");
   }
-  if (kind === "single") return mark(w.offRail, spec.offRail);
+  if (kind === "single") {
+    const roll = railRollOf(key, spec);
+    return roll > 0 ? `${mark(w.offRail, spec.offRail)} · ${w.railRoll} ${formatBottomDepth(roll, system)}` : mark(w.offRail, spec.offRail);
+  }
   if (spec.name === "Tri-Plane Hull Center") return mark(w.offStringer, spec.offStringer);
   if (kind === "belly" && spec.offStringer > 0) return mark(w.offStringer, spec.offStringer);
   return BRD_FIT_COPY.noValue;
@@ -1121,7 +1134,7 @@ function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFi
         { key: "file", label: c.bottomRowLabels.file, cells: cells((_k, row) => fileWords(row)) },
         { key: "fit", label: c.bottomRowLabels.fit, cells: cells((key) => cutWords(cut(key), system)) },
         { key: "stations", label: c.bottomRowLabels.stations, cells: cells((key) => stations(key)) },
-        { key: "across", label: c.bottomRowLabels.across, cells: cells((key) => acrossWords(cut(key), system)) },
+        { key: "across", label: c.bottomRowLabels.across, cells: cells((key) => acrossWords(key, cut(key), system)) },
       ],
       notes: [c.bottomWindowNote, c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))],
     },

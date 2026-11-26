@@ -63,6 +63,26 @@
  *     29 mm vee past Depth's half inch, the wobble in a file's flat sections. (A double inside a vee tail was once on this
  *     list; it was the name choice, not the model: the Spiral Vee as it is draws SAtwin's tail to 0.39 mm, spike 004, and
  *     stage 5 now offers it.)
+ *  7. **Tries the nose once more with a Rail Roll** (quick 261125-mf8, the founder, 2026-11-25, after spikes 005 and 006:
+ *     "Rail Roll sounds good ... Looks like both the bottom and rails get a better fit with it, so maybe we proceed"). His three
+ *     longboard and noserider files turn the bottom up outside the nose concave, which no name could draw. So once the polish of
+ *     stage 6 is done and its guard has run, a file whose widest bottom miss is still over 1 mm (`BRD_BOTTOM_NOSE_RETRY_MM`) has
+ *     its nose replaced by a Blended Nose Concave at its starting numbers, 1/16" deep, with a 1/8" Rail Roll
+ *     (`BRD_BOTTOM_NOSE_RETRY_ROLL_IN`), and the three cuts are polished once more with the roll free as one more slider
+ *     (first step 1/16", `BRD_BOTTOM_POLISH_ROLL_IN`, held to the slider's 0 to 1/2"). The answer is kept when its shown figure
+ *     (the widest plus the typical miss, measured on the file's own sections) is lower: by `BRD_BOTTOM_EXTRA_CUT_MM` (0.25 mm)
+ *     when the retry changed the nose's name, by more than rounding noise when the nose already was a Blended Nose Concave
+ *     (spike 005's own bar, which the founder's approved table was measured with). Under the 1 mm gate a file opens exactly as
+ *     before: without it, the roll went onto files that already fit. The roll is never in the seed, the grid search, the name
+ *     choice, the Tri-Plane rule, the Spiral Vee offer, the rails-first try or the order choice: offered to the grid, it flipped
+ *     the founder's testLB to rails first (spike 005, step 5). Measured through the real import on his twelve files: 92Log
+ *     1.58 / 0.44 to 1.28 / 0.38 mm (its Flat Entry now a Blended Nose Concave with an 11/64" roll), Scoop-Noserider 1.18 / 0.36
+ *     to 1.01 / 0.37 (19/64"), testLB 2.08 / 0.26 to 1.45 / 0.21 (its Teardrop now a Blended Nose Concave, 7/64"); the other nine
+ *     identical; those three take about 0.5 to 1.3 s longer to open. The limits, measured on the app's own boards: a small roll
+ *     (1/8" or 3/16" on the Mid-length) opens with a centre belly standing in for it, under the gate; a board that does come
+ *     back with its roll usually keeps a leftover 1/16" centre cut, the belly or single the name choice read the roll as; a
+ *     Longboard, read rails first, hides most of its roll in the rail; a Slight Single Concave Entry with a roll came back as a
+ *     Rolled Belly Entry; and the one retry, from 1/16", can lose what a deeper fitted nose had.
  *
  * **Between the file's sections.** An AkuShaper file holds only 3 to 5 usable sections, and a slider fitted to so few can fade
  * a cut in and out between two of them where nothing is measured (measured: a 7/16" nose concave fading from nothing to full
@@ -101,11 +121,15 @@ import {
   fadeAt,
   isTailVee,
   keepStationsInOrder,
+  railRollAcross,
+  railRollAlong,
   resolveBottom,
   resolveCut,
   sectionsFoamOff,
   startingCut,
   storeCutStation,
+  takesRailRoll,
+  tidyRailRoll,
   type BoardBottom,
   type BottomBoard,
   type BottomCutKind,
@@ -161,6 +185,16 @@ export const BRD_BOTTOM_POLISH_RESTARTS = 2;
 export const BRD_BOTTOM_MARK_COARSE_IN = 1 / 4;
 /** A rising section whose height halfway across is under this share of its rise at the end reads as a belly, not a vee. */
 export const BRD_BOTTOM_BELLY_SHARE = 1 / 3;
+/**
+ * The nose is tried once more with a Rail Roll (quick 261125-mf8, stage 7 of the header) only on a file whose widest bottom miss
+ * is still over this after the polish. Measured: without it the roll went onto files that already fit (spike 005); with it the
+ * eight of the founder's twelve files already under it open exactly as before, in the same time.
+ */
+export const BRD_BOTTOM_NOSE_RETRY_MM: Mm = mm(1);
+/** The Rail Roll the nose retry starts from (inches): spike 005's measured start. */
+export const BRD_BOTTOM_NOSE_RETRY_ROLL_IN = 1 / 8;
+/** The Rail Roll's first polish step (inches), a Depth's own 1/16" grid step: spike 005's measured step. */
+export const BRD_BOTTOM_POLISH_ROLL_IN = 1 / 16;
 
 /**
  * How many Depth steps there are: 1/16" to 1/2" (D-06). The fit's own depth grid stays 1/16" even though BOTTOM's Depth slider
@@ -539,20 +573,31 @@ interface CutState {
   mult: Float64Array;
   /** What `base` depends on: when this is unchanged, `base` is too. */
   marks: string;
+  /**
+   * A fast nose concave's Rail Roll (quick 261125-mf8): its share across the board at each point (`railRollAcross`; it depends
+   * on the cut's marks only, so it is reused like `base`), and the roll x its share along the board at each section
+   * (`railRollAlong`). Both null for a cut with no roll, or one that goes the slow way (which carries its roll in `base`).
+   */
+  rollAcross: Float64Array | null;
+  rollMult: Float64Array | null;
 }
 
-/** A buffer pair a trial is worked into, so no array is allocated per trial. */
+/** The buffers a trial is worked into, so no array is allocated per trial. */
 interface Buffers {
   base: Float64Array;
   mult: Float64Array;
+  rollAcross: Float64Array;
+  rollMult: Float64Array;
 }
 
 /**
  * The scorer over `targets` (the read sections and the blends), with the slider refinement. A cut's work at a point is exactly
  * its depth x its fade along the board at that station x its work at full fade and 1 mm depth (true of every cut but one that
  * closes to a point, whose half-width depends on the station), so a trial of a station or the depth costs one `fadeAt` per
- * section and a trial of an across mark one rebuilt base. Exported for the tests, which hold it to the slow
- * `sectionsFoamOff` to a billionth of a millimetre.
+ * section and a trial of an across mark one rebuilt base. A nose concave's Rail Roll (quick 261125-mf8) is one more such
+ * product beside it: the roll x its share along the board at each section x its share across at each point, worked out by
+ * the very two functions the slow maths multiplies (`railRollAlong`, `railRollAcross`). Exported for the tests, which hold it
+ * to the slow `sectionsFoamOff` to a billionth of a millimetre.
  */
 export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottomTarget[]) {
   const board = rememberBoard(board0);
@@ -579,15 +624,16 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
 
   const ZERO_BASE = new Float64Array(2 * P);
   const ZERO_MULT = new Float64Array(NS);
-  const newBuffers = (): Buffers => ({ base: new Float64Array(2 * P), mult: new Float64Array(NS) });
+  const newBuffers = (): Buffers => ({ base: new Float64Array(2 * P), mult: new Float64Array(NS), rollAcross: new Float64Array(P), rollMult: new Float64Array(NS) });
   const trialBuffers = newBuffers();
   const evalBuffers: Record<BottomSectionKey, Buffers> = { nose: newBuffers(), center: newBuffers(), tail: newBuffers() };
 
   /** A cut's work at every point: at its own depth (`unitDepth` false) or at full fade and 1 mm depth (true). */
   const fullParts = (key: BottomSectionKey, spec: BottomCutSpec, out: Float64Array, unitDepth: boolean) => {
     const cut = resolveCut(key, spec, board);
+    // At unit depth the roll is left out: it is its own height, not a share of the depth, and the fast form adds it apart.
     const c = unitDepth
-      ? { ...cut, start: mm(L), deepest: mm(0), end: mm(0), depth: mm(1), veeLift: mm(cut.depth > 0 ? cut.veeLift / cut.depth : 0) }
+      ? { ...cut, start: mm(L), deepest: mm(0), end: mm(0), depth: mm(1), veeLift: mm(cut.depth > 0 ? cut.veeLift / cut.depth : 0), railRoll: mm(0) }
       : cut;
     for (let i = 0; i < NS; i++) {
       for (let j = 0; j < J; j++) {
@@ -605,7 +651,7 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
   /** A cut ready to score. Its base is `prev`'s when only its stations or depth changed, else worked into `into`. */
   const prepare = (key: BottomSectionKey, spec: BottomCutSpec, prev: CutState | null, into: Buffers): CutState => {
     const flat = cutKind(spec.name) === "flat" || spec.depth <= 0;
-    if (flat) return { spec, flat, slow: false, base: ZERO_BASE, mult: ZERO_MULT, marks: "" };
+    if (flat) return { spec, flat, slow: false, base: ZERO_BASE, mult: ZERO_MULT, marks: "", rollAcross: null, rollMult: null };
     const slow = spec.closesToPoint;
     const marks = marksKey(spec);
     let base = into.base;
@@ -616,12 +662,32 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
     else {
       const c = resolveCut(key, spec, board);
       for (let i = 0; i < NS; i++) mult[i] = c.depth * fadeAt(c.start, c.deepest, c.end, st[i], L);
+      if (c.railRoll > 0) {
+        let rollAcross = into.rollAcross;
+        if (prev && prev.rollAcross && !prev.flat && !prev.slow && prev.marks === marks) rollAcross = prev.rollAcross;
+        else {
+          for (let i = 0; i < NS; i++) {
+            for (let j = 0; j < J; j++) rollAcross[i * J + j] = railRollAcross(c, board, "narrowest", mm(st[i]), mm(ys[i * J + j]));
+          }
+        }
+        const rollMult = into.rollMult;
+        for (let i = 0; i < NS; i++) rollMult[i] = c.railRoll * railRollAlong(c, mm(st[i]));
+        return { spec, flat, slow, base, mult, marks, rollAcross, rollMult };
+      }
     }
-    return { spec, flat, slow, base, mult, marks };
+    return { spec, flat, slow, base, mult, marks, rollAcross: null, rollMult: null };
   };
   /** The state a trial's cut keeps once it is chosen: its own copies of whatever lived in a shared buffer. */
   const keep = (state: CutState, shared: Buffers): CutState =>
-    state.flat ? state : { ...state, base: state.base === shared.base ? state.base.slice() : state.base, mult: state.mult.slice() };
+    state.flat
+      ? state
+      : {
+          ...state,
+          base: state.base === shared.base ? state.base.slice() : state.base,
+          mult: state.mult.slice(),
+          rollAcross: state.rollAcross && state.rollAcross === shared.rollAcross ? state.rollAcross.slice() : state.rollAcross,
+          rollMult: state.rollMult ? state.rollMult.slice() : null,
+        };
 
   /** largest + typical gap against the targets, or Infinity once the largest gap passes `limit`. */
   const value = (s: Record<BottomSectionKey, CutState>, limit = Infinity): number => {
@@ -640,7 +706,11 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
         let foam = 0;
         if (rail[i]) {
           const concave = ma * a.base[q] + mb * b.base[q] + mc * c.base[q];
-          const lift = ma * a.base[q + 1] + mb * b.base[q + 1] + mc * c.base[q + 1];
+          let lift = ma * a.base[q + 1] + mb * b.base[q + 1] + mc * c.base[q + 1];
+          // A nose concave's Rail Roll (quick 261125-mf8): only a cut that carries one has these, so the old sums run as before.
+          if (a.rollAcross !== null) lift += a.rollMult![i] * a.rollAcross[i * J + j];
+          if (b.rollAcross !== null) lift += b.rollMult![i] * b.rollAcross[i * J + j];
+          if (c.rollAcross !== null) lift += c.rollMult![i] * c.rollAcross[i * J + j];
           foam = Math.min(Math.max(0, concave), cap[i]) + Math.max(0, lift);
         }
         if (j === 0) at0 = foam;
@@ -801,13 +871,17 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
    * fit's own score, one trial buffer per section because all three cuts can change in one trial. A trial counts when it is
    * closer by more than rounding noise: there is no `BRD_BOTTOM_MOVE_GAIN_MM` bar here. Bounded: at most
    * `POLISH_ROUNDS` rounds of at most `POLISH_RUN` repeats a coordinate and a direction, and at most
-   * `POLISH_SIMPLEX_ITERATIONS` x n Nelder-Mead steps a restart, n being at most 21 sliders. Never worse than `specs`:
+   * `POLISH_SIMPLEX_ITERATIONS` x n Nelder-Mead steps a restart, n being at most 22 sliders. Never worse than `specs`:
    * when no trial beats them, they come back untouched.
+   *
+   * `rollFree` (quick 261125-mf8, off unless asked; only the nose retry of `polishBrdBottom` asks): a nose concave gains its
+   * Rail Roll as one more slider, the last of the list, first step 1/16" (`BRD_BOTTOM_POLISH_ROLL_IN`), held to BOTTOM's 0 to
+   * 1/2" and stored with no key at 0. Left off, a roll comes back exactly as it went in.
    */
-  const polish = (specs: Specs): { specs: Specs; value: number } => {
+  const polish = (specs: Specs, rollFree = false): { specs: Specs; value: number } => {
     const IN = inchesToMm(1);
     const startValue = valueOfSpecs(specs);
-    type PolishField = "start" | "deepest" | "end" | "depth" | "offRail" | "offStringer" | "troughAt";
+    type PolishField = "start" | "deepest" | "end" | "depth" | "offRail" | "offStringer" | "troughAt" | "railRoll";
     const fields: { key: BottomSectionKey; field: PolishField }[] = [];
     for (const key of ["tail", "center", "nose"] as const) {
       const kind = cutKind(specs[key].name);
@@ -822,14 +896,21 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
               ? ["offStringer"]
               : [];
       for (const field of marks) fields.push({ key, field });
+      if (rollFree && takesRailRoll(key, specs[key].name)) fields.push({ key, field: "railRoll" });
     }
     if (fields.length === 0) return { specs, value: startValue };
 
     const isStation = (f: PolishField): f is "start" | "deepest" | "end" => f === "start" || f === "deepest" || f === "end";
     // Every value in inches: a station from the tail, a depth, a mark.
-    const x0 = fields.map(({ key, field }) => (isStation(field) ? resolveCut(key, specs[key], board)[field] : specs[key][field]) / IN);
+    const x0 = fields.map(({ key, field }) => (isStation(field) ? resolveCut(key, specs[key], board)[field] : (specs[key][field] ?? 0)) / IN);
     const step0 = fields.map(({ field }) =>
-      isStation(field) ? BRD_BOTTOM_POLISH_STATION_IN : field === "depth" ? BRD_BOTTOM_POLISH_DEPTH_IN : BRD_BOTTOM_POLISH_MARK_IN,
+      isStation(field)
+        ? BRD_BOTTOM_POLISH_STATION_IN
+        : field === "depth"
+          ? BRD_BOTTOM_POLISH_DEPTH_IN
+          : field === "railRoll"
+            ? BRD_BOTTOM_POLISH_ROLL_IN
+            : BRD_BOTTOM_POLISH_MARK_IN,
     );
     const heldTo = (field: PolishField, inches: number): number => {
       if (isStation(field)) return Math.min(L, Math.max(0, inches * IN));
@@ -847,7 +928,8 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
           const base: BottomCutSpec = spec ?? { ...specs[key] };
           spec = isStation(field) ? { ...base, ...storeCutStation(key, field, mm(at), board) } : { ...base, [field]: mm(at) };
         });
-        if (spec) out[key] = keepStationsInOrder(key, spec, "deepest", board, "narrowest");
+        // A Rail Roll that landed on 0 stores no key (`tidyRailRoll`); a cut with none, or a roll that is there, is untouched.
+        if (spec) out[key] = tidyRailRoll(key, keepStationsInOrder(key, spec, "deepest", board, "narrowest"));
       }
       return out;
     };
@@ -1142,6 +1224,12 @@ export function brdStringerLift(bottom: BoardBottom, board: BottomBoard): (stati
  * so a polished bottom is kept only when that shown figure (the widest miss plus the typical one, as the fit scores) is no worse
  * than the grid answer's. Measured: the founder's twelve files all pass; a file the app wrote itself, whose grid answer is
  * already within 0.02 mm, would otherwise have been pulled to 0.39 mm by the flat reading, and it now comes back as it was.
+ *
+ * Then the one exception to "names are never changed" (quick 261125-mf8, stage 7 of the header): a file whose widest miss is
+ * still over `BRD_BOTTOM_NOSE_RETRY_MM` has its nose tried once more as a Blended Nose Concave, 1/16" deep, with a 1/8" Rail
+ * Roll, polished with the roll free, and kept only when its shown figure is lower by `BRD_BOTTOM_EXTRA_CUT_MM` (the nose's name
+ * changed) or by more than rounding noise (it already was a Blended Nose Concave). A file under the gate comes back exactly
+ * as it did before.
  */
 export function polishBrdBottom(bottom: BoardBottom, sections: readonly BrdBottomSection[], board0: BottomBoard): BoardBottom {
   const scorer = brdBottomScorer(board0, brdBottomBlends(sections));
@@ -1151,5 +1239,17 @@ export function polishBrdBottom(bottom: BoardBottom, sections: readonly BrdBotto
     const { largest, typical } = measureBrdBottom(b, sections, board0).closeness;
     return largest + typical;
   };
-  return shown(polished) <= shown(bottom) + NOISE ? polished : bottom;
+  const today = shown(polished) <= shown(bottom) + NOISE ? polished : bottom;
+
+  // The nose tried once more with a Rail Roll, only on a file still over the millimetre gate.
+  if (!(measureBrdBottom(today, sections, board0).closeness.largest > BRD_BOTTOM_NOSE_RETRY_MM)) return today;
+  const nose: BottomCutSpec = {
+    ...startingCut("nose", "Blended Nose Concave", board0),
+    depth: inchesToMm(BOTTOM_MARK_STEP_IN),
+    railRoll: inchesToMm(BRD_BOTTOM_NOSE_RETRY_ROLL_IN),
+  };
+  const more = scorer.polish({ nose, center: today.center, tail: today.tail }, true).specs;
+  const tried: BoardBottom = { ...today, nose: more.nose, center: more.center, tail: more.tail };
+  const bar = today.nose.name === nose.name ? NOISE : BRD_BOTTOM_EXTRA_CUT_MM;
+  return shown(tried) < shown(today) - bar ? tried : today;
 }

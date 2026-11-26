@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 // Fitting a board file is slow work, and a busy machine (the whole suite at once) can stretch a case past the default five
 // seconds: the cases here are generous rather than flaky. A case with its own, longer limit keeps it.
@@ -12,6 +14,7 @@ import { buildBoardSurface } from "./board-surface";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_DEPTH_RANGE_IN,
+  BOTTOM_DEPTH_STEP_IN,
   BOTTOM_MARK_RANGES_IN,
   BOTTOM_MARK_STEP_IN,
   DEFAULT_BOTTOM,
@@ -36,6 +39,7 @@ import {
   BRD_BOTTOM_FLAT_MM,
   BRD_BOTTOM_TRI_PLANE_MM,
   BRD_BOTTOM_EXTRA_CUT_MM,
+  BRD_BOTTOM_NOSE_RETRY_MM,
   BRD_BOTTOM_WINDOW,
   brdBottomBlends,
   brdBottomFromPicks,
@@ -373,6 +377,66 @@ describe("the fast form of a cut is exact", () => {
     expect(refined.value).toBeLessThanOrEqual(before + 1e-9);
     expect(refined.value).toBeCloseTo(slowValue(withCuts(refined.specs)), 9);
   });
+
+  // A nose concave's Rail Roll (quick 261125-mf8): the fast form carries it beside the cut's base, the Teardrop the slow way.
+  // A generator of its own, seeded afresh, so the cases above draw what they always drew.
+  const rolledNose = (r: () => number): BottomCutSpec => {
+    const names: BottomCutName[] = ["Teardrop Nose Concave", "Blended Nose Concave", "Slight Single Concave Entry"];
+    const name = names[Math.floor(r() * names.length)];
+    let spec: BottomCutSpec = { ...startingCut("nose", name, board), depth: inchesToMm(Math.ceil(r() * 8) / 16) };
+    for (const field of ["start", "deepest", "end"] as const) {
+      if (r() < 0.5) continue;
+      const at = grid.toMm(grid.min + Math.floor(r() * (nGrid + 1)) * grid.step);
+      spec = keepStationsInOrder("nose", { ...spec, ...storeCutStation("nose", field, at, board) }, field, board, "narrowest");
+    }
+    const { min, max } = BOTTOM_MARK_RANGES_IN.offRail;
+    spec = { ...spec, offRail: inchesToMm(min + Math.floor((r() * (max - min)) / BOTTOM_MARK_STEP_IN) * BOTTOM_MARK_STEP_IN) };
+    const steps = Math.round(BOTTOM_MARK_RANGES_IN.railRoll.max / BOTTOM_DEPTH_STEP_IN);
+    return { ...spec, railRoll: inchesToMm((1 + Math.floor(r() * steps)) * BOTTOM_DEPTH_STEP_IN) };
+  };
+
+  it("matches the slow way to 1e-9 with a Rail Roll on the nose concave (quick 261125-mf8), over 100 bottoms", () => {
+    const r = random(261125);
+    const scorer = brdBottomScorer(board, targets);
+    const seen = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      const nose = rolledNose(r);
+      seen.add(nose.name);
+      const specs = { nose, center: randomCut("center", true), tail: randomCut("tail", true) };
+      expect(resolveCut("nose", nose, board).railRoll).toBeGreaterThan(0);
+      expect(scorer.valueOfSpecs(specs)).toBeCloseTo(slowValue(withCuts(specs)), 9);
+    }
+    expect(seen.size).toBe(3);
+  });
+
+  it("the polish with the roll free keeps its remembered work honest, never gets worse, and holds every roll to BOTTOM's range", () => {
+    const scorer = brdBottomScorer(board, targets);
+    const nose = { ...startingCut("nose", "Blended Nose Concave", board), depth: inchesToMm(3 / 16), railRoll: inchesToMm(1 / 8) };
+    const specs = { nose, center: startingCut("center", "Deep Single Concave", board), tail: startingCut("tail", "Panel Vee", board) };
+    const before = scorer.valueOfSpecs(specs);
+    const polished = scorer.polish(specs, true);
+    expect(polished.value).toBeLessThanOrEqual(before + 1e-9);
+    expect(polished.value).toBeCloseTo(slowValue(withCuts(polished.specs)), 9);
+    for (const key of ["nose", "center", "tail"] as const) {
+      const roll = polished.specs[key].railRoll;
+      if (roll === undefined) continue;
+      expect(key).toBe("nose");
+      expect(roll).toBeGreaterThan(0);
+      expect(mmToInches(roll)).toBeLessThanOrEqual(BOTTOM_MARK_RANGES_IN.railRoll.max + 1e-9);
+    }
+  }, LONG);
+
+  it("the polish frees the roll only when asked: left alone, a rolled nose keeps its roll and an unrolled one gets no key", () => {
+    const scorer = brdBottomScorer(board, targets);
+    const rolled = { ...startingCut("nose", "Blended Nose Concave", board), depth: inchesToMm(3 / 16), railRoll: inchesToMm(3 / 32) };
+    const centre = startingCut("center", "Deep Single Concave", board);
+    const tail = startingCut("tail", "Panel Vee", board);
+    expect(scorer.polish({ nose: rolled, center: centre, tail }).specs.nose.railRoll).toBe(rolled.railRoll);
+    const plain: BottomCutSpec = { ...rolled };
+    delete plain.railRoll;
+    const out = scorer.polish({ nose: plain, center: centre, tail }).specs;
+    for (const key of ["nose", "center", "tail"] as const) expect("railRoll" in out[key], key).toBe(false);
+  }, LONG);
 });
 
 describe("fitBottomToBrd", () => {
@@ -830,4 +894,57 @@ describe("the polish: the chosen bottom's sliders land at any value, names held 
     const flat = fitBottomToBrd(exact(DEFAULT_BOTTOM), board)!;
     expect(polishBrdBottom(flat.bottom, flat.sections, board)).toEqual(flat.bottom);
   }, LONG);
+
+  /*
+   * The nose tried once more with a Rail Roll (quick 261125-mf8, D-05): the Shortboard's Blended Nose Concave 3/16" deep,
+   * written with a Rail Roll, as sections that are exactly the written bottom's.
+   */
+  const rolledFile = (rollIn: number) =>
+    withCuts({ nose: { ...startingCut("nose", "Blended Nose Concave", board), depth: I(3 / 16), railRoll: I(rollIn) } });
+  const shown = (b: BoardBottom, sections: readonly BrdBottomSection[]) => {
+    const { largest, typical } = measureBrdBottom(b, sections, board).closeness;
+    return { largest, both: largest + typical };
+  };
+  const noRollKey = (b: BoardBottom) => KEYS.every((key) => !("railRoll" in b[key]));
+
+  it("a 1/8\" Rail Roll: the grid answer has none and misses by over a millimetre; the polished nose is a Blended Nose Concave with about that roll", () => {
+    const { grid, polished, measured } = both(rolledFile(1 / 8));
+    expect(noRollKey(grid.bottom)).toBe(true);
+    expect(shown(grid.bottom, grid.sections).largest).toBeGreaterThan(BRD_BOTTOM_NOSE_RETRY_MM);
+    expect(polished.nose.name).toBe("Blended Nose Concave");
+    expect(Math.abs(polished.nose.railRoll! - I(1 / 8))).toBeLessThan(I(1 / 32));
+    expect(measured.closeness.largest).toBeLessThan(BRD_BOTTOM_FLAT_MM);
+  }, LONG);
+
+  it("a 1/4\" Rail Roll: the grid's nose is not a concave; the polished one is a Blended Nose Concave with about that roll, a quarter millimetre closer", () => {
+    const { grid, polished, measured } = both(rolledFile(1 / 4));
+    expect(noRollKey(grid.bottom)).toBe(true);
+    expect(cutKind(grid.bottom.nose.name)).not.toBe("single");
+    expect(polished.nose.name).toBe("Blended Nose Concave");
+    expect(Math.abs(polished.nose.railRoll! - I(1 / 4))).toBeLessThan(I(1 / 32));
+    expect(measured.closeness.largest).toBeLessThan(BRD_BOTTOM_FLAT_MM);
+    expect(shown(polished, grid.sections).both).toBeLessThanOrEqual(shown(grid.bottom, grid.sections).both - BRD_BOTTOM_EXTRA_CUT_MM);
+  }, LONG);
+
+  it("a 1/16\" Rail Roll, whose grid answer is already under the millimetre gate: no retry, the grid's names and no roll", () => {
+    const { grid, polished } = both(rolledFile(1 / 16));
+    expect(shown(grid.bottom, grid.sections).largest).toBeLessThan(BRD_BOTTOM_NOSE_RETRY_MM);
+    for (const key of KEYS) expect(polished[key].name).toBe(grid.bottom[key].name);
+    expect(noRollKey(polished)).toBe(true);
+  }, LONG);
+
+  it("the roll is never in the name choice: the grid answer carries no Rail Roll on any of the three files", () => {
+    for (const rollIn of [1 / 16, 1 / 8, 1 / 4]) {
+      const grid = fitBottomToBrd(exact(rolledFile(rollIn)), board)!;
+      expect(noRollKey(grid.bottom), String(rollIn)).toBe(true);
+    }
+  }, LONG);
+
+  it("no trial switch was ported: the bottom's maths, the fit and the preview read no environment variable and hold none of the spike's names", () => {
+    for (const file of ["lib/geometry/bottom.ts", "lib/geometry/brd-bottom.ts", "lib/export/brd-fit-preview.ts"]) {
+      const source = readFileSync(join(process.cwd(), file), "utf8");
+      expect(source, file).not.toMatch(/process\.env/);
+      expect(source, file).not.toMatch(/SPIKE|edgeRoll|acrossShape|spikeSec/);
+    }
+  });
 });

@@ -704,6 +704,7 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
         offRail: BOTTOM_COPY.offRail,
         offStringer: BOTTOM_COPY.offStringer,
         troughAt: BOTTOM_COPY.troughAt,
+        railRoll: BOTTOM_COPY.railRoll,
       });
       expect(BRD_FIT_COPY.bottomRowLabels.stations).toBe(`${BOTTOM_COPY.start} · ${BOTTOM_COPY.deepestAt} · ${BOTTOM_COPY.end}`);
     });
