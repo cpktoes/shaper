@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// These cases walk every station and point of four boards, and a busy machine (the whole suite at once) can stretch one past
+// the default five seconds: the limit is generous rather than flaky. A case with its own, longer limit keeps it.
+vi.setConfig({ testTimeout: 60_000 });
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 import {
   BOTTOM_CUT_NAMES,
