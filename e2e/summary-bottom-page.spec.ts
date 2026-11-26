@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { BOTTOM_COPY, layoutMarkColumnName, layoutMarksNote, referenceRowsNote } from "../components/bottom/bottom-copy";
-import { BOTTOM_GUIDE_WORDS, guideHow } from "../components/bottom/bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, guideHow, guideHowOnPaper, RAIL_ROLL_HOW } from "../components/bottom/bottom-guide-words";
 import { bottomSheetLayout, bottomSheetStationsLine } from "../components/summary/bottom-sheet-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, bottomLayoutMarks, type BottomDataRow } from "../lib/geometry/bottom";
 import { columnUnitSuffix, formatBottomDepthBare, formatDimBare, formatMarkBare } from "../lib/geometry/measure-display";
@@ -398,4 +398,55 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
       ).toBeVisible();
     });
   }
+});
+
+/**
+ * The Rail Roll's line on paper (the founder, 2026-11-25, quick 261125-v2j): a nose concave's How to shape on the printed
+ * page ends with the founder's line only when the board's nose concave has a Rail Roll above 0; with none, the page
+ * prints the note it always did. Every expected word comes from the GUIDE's words module.
+ */
+test.describe("Summary — the printed nose concave's How to shape carries the Rail Roll's line only with a roll (quick 261125-v2j)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  const picks = { nose: "Blended Nose Concave", center: "Deep Single Concave" } as const;
+  const card = BOTTOM_GUIDE_WORDS.find((c) => c.key === picks.nose)!;
+
+  /** The printed note of the board's nose cut, and the head the page runs in before it. */
+  async function noseNote(page: Page, board: BoardWithBottom, system: UnitsSystem) {
+    const layout = bottomSheetLayout(board.resolved, board.board, system, board.frontPair);
+    const index = layout.cuts.findIndex((cut) => cut.key === "nose");
+    expect(index, "the board has a nose cut").toBeGreaterThanOrEqual(0);
+    const notes = page.locator('[data-bottom-sheet] [data-bottom-sheet-part="notes"] p');
+    await expect(notes).toHaveCount(layout.cuts.length);
+    return { note: notes.nth(index), head: layout.notes[index].head };
+  }
+
+  for (const system of SYSTEMS) {
+    test(`a Blended Nose Concave with a 1/8" Rail Roll ends its note with the founder's line (${system})`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to read the words");
+      test.slow();
+      const board = boardWithBottom("shortboard", { ...picks, noseRailRollIn: 1 / 8 });
+      expect(board.resolved.nose.railRoll, "the board's nose concave has a roll").toBeGreaterThan(0);
+      await selectSystem(page, system);
+      await openSummaryOn(page, board);
+      const { note, head } = await noseNote(page, board, system);
+      await expect(note).toHaveText(`${head}. ${guideHow(card, system)}`);
+      expect(((await note.textContent()) ?? "").trim().endsWith(RAIL_ROLL_HOW), "the note ends with the line").toBe(true);
+    });
+  }
+
+  test("the same board with no Rail Roll prints the note without the line (imperial)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to read the words");
+    test.slow();
+    const board = boardWithBottom("shortboard", picks);
+    expect(board.resolved.nose.railRoll, "the board's nose concave has no roll").toBe(0);
+    await openSummaryOn(page, board);
+    const { note, head } = await noseNote(page, board, "imperial");
+    await expect(note).toHaveText(`${head}. ${guideHowOnPaper(card, "imperial", 0)}`);
+    const text = ((await note.textContent()) ?? "").trim();
+    expect(text.endsWith(RAIL_ROLL_HOW), "no line without a roll").toBe(false);
+    expect(text).not.toContain(RAIL_ROLL_HOW);
+  });
 });

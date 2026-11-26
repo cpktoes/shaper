@@ -13,7 +13,7 @@ import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { planingTable, thinningLine } from "../lib/geometry/planing";
 import { THINNING_START_MIN_MM, thinningStartRange } from "../lib/geometry/tip-taper";
 import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem } from "../lib/geometry/units";
-import { bottomSheetLayout } from "../components/summary/bottom-sheet-fit";
+import { bottomSheetLayout, bottomTopViewBox } from "../components/summary/bottom-sheet-fit";
 import { bottomDataRows, bottomLayoutMarks } from "../lib/geometry/bottom";
 import { boardWithBottom, openOnBoard, type BottomPicks } from "./helpers/bottom-print";
 
@@ -1130,11 +1130,14 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
  *
  * The page is laid out by arithmetic (`components/summary/bottom-sheet-fit.ts` decides, from the board alone, whether
  * the two tables stay on the page or take a sheet of their own), and arithmetic about a page is only as good as the
- * page agrees with it. This is where the page is asked: five boards — the fullest bottom the rule keeps on one page,
+ * page agrees with it. This is where the page is asked: seven boards — the fullest bottom the rule keeps on one page,
  * a long board with three cuts, the worst bottom there is (a cut in every section and eight channels on the longest
  * stock board, nineteen rows under eleven columns of marks), the same worst bottom on the widest stock board,
- * whose picture from above stands tallest over four sections, and the longest board the app makes (12'0" x 31", 25
- * rows a table) whose two tables take a sheet each (quick 261113-vya) — on a computer's printed sheet and on a phone's
+ * whose picture from above stands tallest over four sections, the longest board the app makes (12'0" x 31", 25
+ * rows a table) whose two tables take a sheet each (quick 261113-vya), and two pages whose own parts fill them once the
+ * tables have gone — that same Fish with a Rail Roll on its Teardrop (the founder's longer note), and a 5'6" x 25" Fish
+ * drawn at the picture's cap — where the rule draws the board a few dots smaller so the page fits (quick 261125-v2j) —
+ * on a computer's printed sheet and on a phone's
  * sheet at every width the other pages are swept at, in both systems. On every one: no sheet clips, no box on the page
  * clips, every table is inside its box and has every row, the content stops above the page mark, and the bottom's own
  * picture is drawn at its full size (it is the one part allowed to give way, so a page the rule says fits must never
@@ -1148,6 +1151,8 @@ const BOTTOM_FIT_BOARDS: {
   size?: { lengthIn: number; widthIn: number };
   tablesOnOwnSheet: boolean;
   tablesSplit: boolean;
+  /** Whether the rule draws the board in the picture a few dots under its natural room so the page fits (quick 261125-v2j). */
+  pictureGivesRoom?: boolean;
 }[] = [
   {
     name: "the fullest bottom the page holds whole — a Shortboard with a Deep Single Concave and 6 channels",
@@ -1184,6 +1189,23 @@ const BOTTOM_FIT_BOARDS: {
     size: { lengthIn: 144, widthIn: 31 },
     tablesOnOwnSheet: true,
     tablesSplit: true,
+  },
+  {
+    name: "the founder's longer note on the fullest page of drawings — a Fish with a cut in every section, 8 channels and a 1/8\" Rail Roll",
+    preset: "fish",
+    picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8, noseRailRollIn: 1 / 8 },
+    tablesOnOwnSheet: true,
+    tablesSplit: false,
+    pictureGivesRoom: true,
+  },
+  {
+    name: "a page that ran over before quick 261125-v2j — a 5'6\" x 25\" Fish with a cut in every section and 8 channels",
+    preset: "fish",
+    picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
+    size: { lengthIn: 66, widthIn: 25 },
+    tablesOnOwnSheet: true,
+    tablesSplit: false,
+    pictureGivesRoom: true,
   },
 ];
 
@@ -1270,6 +1292,10 @@ test.describe("Summary — the BOTTOM CONTOURS page fits its sheet (Phase 17, D-
         // Non-vacuity: the board is the case its name says, by the rule the order form itself asks.
         expect(layout.tablesOnOwnSheet, `${fit.name}: the fit rule's answer`).toBe(fit.tablesOnOwnSheet);
         expect(layout.tablesSplit, `${fit.name}: the fit rule's answer on a sheet each`).toBe(fit.tablesSplit);
+        // The picture gives room exactly on the boards that say so; the five boards before quick 261125-v2j keep theirs whole.
+        expect(layout.topViewRoom < bottomTopViewBox(board.board, layout.cuts.length).room, `${fit.name}: the picture gives room`).toBe(
+          fit.pictureGivesRoom ?? false,
+        );
         expect(rows, `${fit.name}: rows to print`).toBeGreaterThan(10);
         const sheetCount = 2 + layout.sheets;
 

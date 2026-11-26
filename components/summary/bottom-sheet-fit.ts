@@ -11,6 +11,11 @@
  * will not share even that sheet — over 11'6" (25 rows, every 6" and the nose tip) with a layout-mark column — each
  * table takes a sheet to itself, whole from Tail to Nose tip (quick 261113-vya).
  *
+ * And once the tables have gone, the page's own parts — the picture, the sections and the notes — can still fill it on
+ * a board drawn tall with a cut in every section, or under a long note. The rule then gives the room itself: the bottom
+ * from above, the page's one part made to give way, is drawn the fewest whole dots smaller that make the page fit
+ * (`topViewRoom`, quick 261125-v2j), rather than left for the browser to squeeze, labels and all.
+ *
  * Pure and the same on the server and in the browser: nothing here measures a screen. The heights below are the
  * page's own parts as they measured on the two sheets this form prints on — a computer's printed sheet and a phone's —
  * written down as arithmetic and checked against the real pages by `e2e/summary-planing.spec.ts`'s fit sweep, on both
@@ -18,7 +23,7 @@
  * board's own measurement, so no inch or millimetre figure appears here (CLAUDE.md Rule 2).
  */
 import { BOTTOM_COPY, layoutMarksNote, referenceRowsNote } from "@/components/bottom/bottom-copy";
-import { BOTTOM_GUIDE_WORDS, guideHow } from "@/components/bottom/bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, guideHowOnPaper } from "@/components/bottom/bottom-guide-words";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   bottomDataRows,
@@ -55,15 +60,18 @@ export const BOTTOM_TABLES_BESIDE_MAX_COLUMNS = 6;
 
 /**
  * The top view's box for a board with this many cuts: the board's room, where the rows start, and the part of the
- * picture the page shows — from `top` down, `height` tall.
+ * picture the page shows — from `top` down, `height` tall. `roomCap` is the most room the page gives the board — the
+ * layout's `topViewRoom`, which is fewer dots than the board's natural room only on a page that would otherwise run
+ * over its sheet (quick 261125-v2j); left out, the board takes its natural room, capped at `maxRoom`.
  */
 export function bottomTopViewBox(
   board: Pick<BottomBoard, "length" | "widePointWidth">,
   cuts: number,
+  roomCap: number = BOTTOM_TOP_VIEW.maxRoom,
 ): { boardBoxWidth: number; room: number; frameHeight: number; rowsTop: number; top: number; height: number } {
   const boardBoxWidth = BOTTOM_TOP_VIEW.width - BOTTOM_TOP_VIEW.gutter;
   const natural = (board.widePointWidth * TOP_VIEW_LENGTH_SHARE * boardBoxWidth) / board.length;
-  const room = Math.min(BOTTOM_TOP_VIEW.maxRoom, Math.ceil(natural));
+  const room = Math.min(BOTTOM_TOP_VIEW.maxRoom, Math.ceil(natural), roomCap);
   const rowsTop = TOP_VIEW_ROOM_ABOVE + room + BOTTOM_TOP_VIEW.rowsGap;
   return {
     boardBoxWidth,
@@ -78,7 +86,10 @@ export function bottomTopViewBox(
 /** DATA's layout marks: a column per mark in shop order, a row per station. */
 export type BottomLayoutMarks = ReturnType<typeof bottomLayoutMarks>;
 
-/** One How to shape note: the cut's head and the GUIDE's own words for it. */
+/**
+ * One How to shape note: the cut's head and the GUIDE's own words for it, as paper prints them — the Rail Roll's line
+ * only on a nose concave whose Rail Roll is above 0 (`guideHowOnPaper`, quick 261125-v2j).
+ */
 export interface BottomSheetNote {
   head: string;
   how: string;
@@ -131,6 +142,14 @@ export interface BottomSheetLayout {
   /** How many sheets the bottom prints on: 1, 2 when the tables take their own, 3 when each table takes one or the
    * tables' notes take one after the tables. */
   sheets: 1 | 2 | 3;
+  /**
+   * The board's room in the top view, in the picture's dots (quick 261125-v2j): its natural room
+   * (`bottomTopViewBox(board, cuts.length).room`) on every page whose parts fit, and fewer whole dots — the fewest that
+   * make it fit — on a page whose picture, sections and How to shape notes would otherwise leave under the hairline once
+   * the tables have taken their own sheet. Only the board's own room shrinks; the rows' names, the labels and the rows
+   * under the board stay full size.
+   */
+  topViewRoom: number;
 }
 
 /**
@@ -212,17 +231,23 @@ const PAGE = {
   noteLetters: 116,
   /**
    * The room a page must have left over to count as fitting. A hairline: the arithmetic agrees with the measured pages
-   * to a fraction of a dot, and where another browser sets a line differently the bottom's picture gives way by that
-   * much (it is the one part made to), so no row or note is ever cut off.
+   * to a fraction of a dot. Where the page's own parts would leave less, the rule itself draws the bottom's picture a
+   * few dots smaller (`BottomSheetLayout.topViewRoom`, quick 261125-v2j); the browser's own give-way on the picture is
+   * only the guard for a line another browser sets differently, so no row or note is ever cut off.
    */
   spare: 4,
 } as const;
 
-/** The cut's GUIDE card: a section's cut by its name, the channels by their own card. */
+/**
+ * The cut's GUIDE card: a section's cut by its name, the channels by their own card. Its note is the paper's
+ * (`guideHowOnPaper`): the Rail Roll's line is kept only when the cut's own Rail Roll is above 0 — 0 on the channels
+ * and on every cut that takes none (quick 261125-v2j).
+ */
 function noteFor(cut: BottomPrintCut, resolved: ResolvedBottom, system: UnitsSystem): BottomSheetNote {
   const key = cut.key === "channels" ? "Channels" : resolved[cut.key].name;
+  const roll = cut.key === "channels" ? 0 : resolved[cut.key].railRoll;
   const card = BOTTOM_GUIDE_WORDS.find((c) => c.key === key);
-  return { head: cut.head, how: card ? guideHow(card, system) : "" };
+  return { head: cut.head, how: card ? guideHowOnPaper(card, system, roll) : "" };
 }
 
 /** How many lines this many letters of a note take. */
@@ -235,10 +260,18 @@ function noteLines(note: BottomSheetNote): number {
   return linesOf(note.head.length + 2 + note.how.length);
 }
 
-/** The height of everything on the page but the tables: the picture, the sections and the notes, and the gaps between. */
-function pageHeightWithoutTables(sheet: SheetSizes, board: Pick<BottomBoard, "length" | "widePointWidth">, notes: readonly BottomSheetNote[]): number {
+/**
+ * The height of everything on the page but the tables: the picture, the sections and the notes, and the gaps between.
+ * `roomCap` is the board's room in the picture (`bottomTopViewBox`'s); left out, its natural room.
+ */
+function pageHeightWithoutTables(
+  sheet: SheetSizes,
+  board: Pick<BottomBoard, "length" | "widePointWidth">,
+  notes: readonly BottomSheetNote[],
+  roomCap?: number,
+): number {
   const cuts = notes.length;
-  const picture = bottomTopViewBox(board, cuts).height * PAGE.pictureScale + sheet.pictureFrame;
+  const picture = bottomTopViewBox(board, cuts, roomCap).height * PAGE.pictureScale + sheet.pictureFrame;
   const rows = Math.ceil(cuts / 2);
   const sections = cuts === 1 ? sheet.sectionsLone : rows * sheet.sectionsPair + (rows - 1) * PAGE.gap;
   const words = sheet.notesFrame + notes.reduce((sum, note) => sum + noteLines(note) * sheet.noteLine, 0) + (cuts - 1) * PAGE.noteGap;
@@ -337,7 +370,31 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
     }
   }
   const sheets = tablesSplit || notesOnOwnSheet.length > 0 ? 3 : tablesOnOwnSheet ? 2 : 1;
-  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tablesSplit, tableNotes, tablesTight, splitNotes, notesOnOwnSheet, sheets };
+  // The page's own parts (quick 261125-v2j). Once the tables have left, the picture, the sections and the notes are all
+  // that is on the page, and on a board drawn tall with a cut in every section and 8 channels — or with a long note —
+  // they can still fill it. The picture is the page's one part made to give way, so the rule gives it: the board's room
+  // comes down a whole dot at a time until the page fits, and not a dot further. Where the tables stay on the page it
+  // already fits by the tables' own test above. Whether the tables leave was decided at the picture's whole room, so no
+  // board prints a sheet more or fewer for this.
+  let topViewRoom = bottomTopViewBox(board, cuts.length).room;
+  if (tablesOnOwnSheet) {
+    while (topViewRoom > 1 && spareAfter((sheet) => pageHeightWithoutTables(sheet, board, notes, topViewRoom)) < PAGE.spare) topViewRoom--;
+  }
+  return {
+    cuts,
+    notes,
+    dataRows,
+    marks,
+    tablesBeside,
+    tablesOnOwnSheet,
+    tablesSplit,
+    tableNotes,
+    tablesTight,
+    splitNotes,
+    notesOnOwnSheet,
+    sheets,
+    topViewRoom,
+  };
 }
 
 /** The room, in dots, a sheet must have left over for its parts to count as fitting (for the tests). */
@@ -348,7 +405,9 @@ export const BOTTOM_SHEET_SPARE = PAGE.spare;
  * on: `page` for the BOTTOM CONTOURS page as it is laid out, `tables` for the tables' own sheet (null when they stay on
  * the page, or when each takes a sheet), its rows counted tight when the layout says so, `split` for the depths
  * sheet and the layout-marks sheet of a board whose tables take one each (null otherwise), and `notes` for the notes'
- * own sheet when they take one (null otherwise). For the tests: a negative figure is a page whose picture has to give way.
+ * own sheet when they take one (null otherwise). The page is counted with the picture at the layout's own room
+ * (`topViewRoom`), the room it is drawn at. For the tests: a figure under `BOTTOM_SHEET_SPARE` is a page the rule
+ * failed to fit.
  */
 export function bottomSheetSpare(
   layout: BottomSheetLayout,
@@ -358,7 +417,7 @@ export function bottomSheetSpare(
   const markColumns = layout.marks.columns.length;
   const page = spareAfter(
     (sheet) =>
-      pageHeightWithoutTables(sheet, board, layout.notes) +
+      pageHeightWithoutTables(sheet, board, layout.notes, layout.topViewRoom) +
       (layout.tablesOnOwnSheet ? 0 : PAGE.gap + tablesHeight(sheet, rows, markColumns, layout.tablesBeside)),
   );
   const tables =

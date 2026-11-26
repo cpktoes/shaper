@@ -6,6 +6,7 @@ import {
   pickCut,
   resolveBottom,
   startingChannels,
+  tidyRailRoll,
   type BoardBottom,
   type BottomBoard,
   type BottomCutName,
@@ -28,6 +29,11 @@ export interface BottomPicks {
   center?: BottomCutName;
   tail?: BottomCutName;
   channels?: ChannelCount;
+  /**
+   * The nose concave's Rail Roll, in inches (quick 261125-v2j) — set as BOTTOM's slider sets it, through `tidyRailRoll`,
+   * so a nose cut that takes none, or a 0, stores no roll at all.
+   */
+  noseRailRollIn?: number;
 }
 
 /** A stock board with a bottom picked on it, as the app itself would hold it. */
@@ -78,6 +84,9 @@ export function boardWithBottom(presetId: string, picks: BottomPicks, size?: { l
   for (const section of BOTTOM_SECTIONS) {
     const name = picks[section as BottomSectionKey];
     if (name) bottom = pickCut(bottom, section, name, board);
+  }
+  if (picks.noseRailRollIn !== undefined) {
+    bottom = { ...bottom, nose: tidyRailRoll("nose", { ...bottom.nose, railRoll: inchesToMm(picks.noseRailRollIn) }) };
   }
   if (picks.channels) bottom = { ...bottom, channels: startingChannels(picks.channels, board, bottom.channels) };
   return {

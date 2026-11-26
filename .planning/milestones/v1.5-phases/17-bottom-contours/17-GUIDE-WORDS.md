@@ -18,6 +18,12 @@ shaper reads `15 cm` in its place. It is a rule-of-thumb spacing said in prose, 
 round `15 cm`, never `15.2 cm`. The lines below stay as written, in inches; the screen swaps that one figure and nothing
 else, and a test holds both readings.
 
+**The Rail Roll's line (the founder, 2026-11-25 — "Use 1, add it to the three nose concave cards"; quick 261125-v2j):**
+"Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it
+smooth." It ends the How to shape of cards 3, 4 and 5 — the Teardrop Nose Concave, the Blended Nose Concave and the
+Slight Single Concave Entry, the three nose concaves that take a Rail Roll. The GUIDE always shows it; the printed bottom
+page carries it only on a board whose nose concave has a Rail Roll above 0, and otherwise prints the note without it.
+
 
 ## Nose
 
@@ -37,19 +43,19 @@ else, and a test holds both readings.
 
 - **What it is and looks like:** A single concave widest under the nose, closing to a point before the center.
 - **What it does:** A noserider's lift: it holds air and water under the nose so it rides high with you standing on it.
-- **How to shape:** Pencil the edge at Off Rail from the tip back and close it to a point at End. Hollow along the stringer in shallow planer passes from Start, deepest at Deepest, then blend out to the pencil line with a flexible pad; a straightedge across the nose shows the depth.
+- **How to shape:** Pencil the edge at Off Rail from the tip back and close it to a point at End. Hollow along the stringer in shallow planer passes from Start, deepest at Deepest, then blend out to the pencil line with a flexible pad; a straightedge across the nose shows the depth. Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it smooth.
 
 ### 4. Blended Nose Concave
 
 - **What it is and looks like:** A shallow single under the nose that fades into the center without an edge.
 - **What it does:** Lifts the entry of a longboard or mid-length without the teardrop's drag.
-- **How to shape:** As the teardrop, but with no edge: carry the hollow out to the pencil line with a soft pad so no step is left, and fade it to nothing by End.
+- **How to shape:** As the teardrop, but with no edge: carry the hollow out to the pencil line with a soft pad so no step is left, and fade it to nothing by End. Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it smooth.
 
 ### 5. Slight Single Concave Entry
 
 - **What it is and looks like:** The faintest single concave from the nose back, barely a gauge mark deep.
 - **What it does:** Quickens the entry and leads the water into the center's concave.
-- **How to shape:** A few shallow planer passes along the stringer from Start, screened out to Off Rail — a straightedge should show the gap you set and no more.
+- **How to shape:** A few shallow planer passes along the stringer from Start, screened out to Off Rail — a straightedge should show the gap you set and no more. Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it smooth.
 
 ### 6. Reverse Vee Nose
 

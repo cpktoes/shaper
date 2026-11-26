@@ -2,9 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BOTTOM_CUT_NAMES } from "@/lib/geometry/bottom";
+import { BOTTOM_CUT_NAMES, takesRailRoll, type BottomCutName } from "@/lib/geometry/bottom";
+import { UNITS_SYSTEMS } from "@/lib/geometry/units";
 import { BOTTOM_COPY } from "./bottom-copy";
-import { BOTTOM_GUIDE_WORDS, GUIDE_SPACING, guideHow } from "./bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, GUIDE_SPACING, guideHow, guideHowOnPaper, RAIL_ROLL_HOW } from "./bottom-guide-words";
 
 /*
  * The GUIDE's words are the founder's (Phase 17, D-18): `17-GUIDE-WORDS.md` is the page he marks up, and the module the
@@ -176,6 +177,54 @@ describe("the one figure in the words reads in the shaper's own system (the foun
     expect(guide).toMatch(/useUnits\(\)/);
     expect(guide).toMatch(/guideHow\(card, system\)/);
     expect(guide).not.toMatch(/card\.how/);
+  });
+});
+
+describe("the Rail Roll's shaping line (the founder, 2026-11-25, quick 261125-v2j)", () => {
+  // The cards that take a Rail Roll are the maths' own rule, never a list typed here alone.
+  const ROLLING: BottomCutName[] = BOTTOM_CUT_NAMES.nose.filter((name) => takesRailRoll("nose", name));
+  const rolls = (card: (typeof BOTTOM_GUIDE_WORDS)[number]) => card.section === "nose" && ROLLING.includes(card.key as BottomCutName);
+
+  it("is the founder's line, word for word", () => {
+    expect(RAIL_ROLL_HOW).toBe(
+      "Cut the concave first. Then plane from its edge out to the rail, taking the Rail Roll off at the rail, and blend it smooth.",
+    );
+  });
+
+  it("ends the How to shape of exactly the three nose concaves that take a Rail Roll, once each, and appears on no other card", () => {
+    expect(ROLLING).toEqual(["Teardrop Nose Concave", "Blended Nose Concave", "Slight Single Concave Entry"]);
+    const ending = BOTTOM_GUIDE_WORDS.filter((card) => card.how.endsWith(` ${RAIL_ROLL_HOW}`)).map((card) => card.key);
+    expect(ending).toEqual(ROLLING);
+    for (const card of BOTTOM_GUIDE_WORDS) {
+      expect(card.how.split(RAIL_ROLL_HOW).length - 1, card.key).toBe(rolls(card) ? 1 : 0);
+      for (const line of [card.is, card.does]) expect(line, card.key).not.toContain(RAIL_ROLL_HOW);
+    }
+  });
+
+  it("carries no figure and no unit, so a Metric shaper reads it the same", () => {
+    expect(RAIL_ROLL_HOW).not.toMatch(/\d/);
+    expect(RAIL_ROLL_HOW).not.toMatch(/"|\b(cm|mm|in|inch|inches)\b/);
+    for (const card of BOTTOM_GUIDE_WORDS.filter(rolls)) {
+      for (const system of UNITS_SYSTEMS) expect(guideHow(card, system).endsWith(` ${RAIL_ROLL_HOW}`), card.key).toBe(true);
+    }
+  });
+
+  it("paper carries it only with a Rail Roll above 0: the GUIDE's own note then, and the same words without it at 0", () => {
+    for (const card of BOTTOM_GUIDE_WORDS) {
+      for (const system of UNITS_SYSTEMS) {
+        for (const roll of [3.175, 0.001]) expect(guideHowOnPaper(card, system, roll), card.key).toBe(guideHow(card, system));
+        for (const roll of [0, -1]) {
+          const atZero = guideHowOnPaper(card, system, roll);
+          if (rolls(card)) {
+            expect(atZero, card.key).toBe(guideHow(card, system).slice(0, -(RAIL_ROLL_HOW.length + 1)));
+            expect(atZero, card.key).not.toContain(RAIL_ROLL_HOW);
+            expect(atZero, card.key).toBe(atZero.trim());
+          } else {
+            expect(atZero, card.key).toBe(guideHow(card, system));
+          }
+        }
+      }
+    }
   });
 });
 
