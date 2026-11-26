@@ -25,12 +25,14 @@ const SECTION_WORD: Record<BottomSectionKey, string> = { nose: "Nose", center: "
 /**
  * Each name's rows, in D-04's order (UI-SPEC § The side panel, the "Shown for" column): a single Off Rail; a double
  * (the Spiral Vee is one) Off Rail, Off Stringer, Trough At; the Tri-Plane and each belly Off Stringer; then every cut Start, Deepest
- * At, End, Depth; the Spiral Vee Vee Lift; Smoothness. A flat none.
+ * At, End, Depth; the Spiral Vee Vee Lift; Smoothness. A flat none. The three nose concaves carry a Rail Roll right after
+ * their Off Rail (quick 261125-mf8, D-01).
  */
 const STATIONS = ["Start", "Deepest At", "End", "Depth"];
 const ROWS: Record<string, string[]> = {
   flat: [],
   single: ["Off Rail", ...STATIONS, "Smoothness"],
+  noseSingle: ["Off Rail", "Rail Roll", ...STATIONS, "Smoothness"],
   double: ["Off Rail", "Off Stringer", "Trough At", ...STATIONS, "Smoothness"],
   spiral: ["Off Rail", "Off Stringer", "Trough At", ...STATIONS, "Vee Lift", "Smoothness"],
   triPlane: ["Off Stringer", ...STATIONS, "Smoothness"],
@@ -40,9 +42,9 @@ const ROWS: Record<string, string[]> = {
 const KIND_OF: Record<string, keyof typeof ROWS> = {
   "Flat Entry": "flat",
   "Rolled Belly Entry": "belly",
-  "Teardrop Nose Concave": "single",
-  "Blended Nose Concave": "single",
-  "Slight Single Concave Entry": "single",
+  "Teardrop Nose Concave": "noseSingle",
+  "Blended Nose Concave": "noseSingle",
+  "Slight Single Concave Entry": "noseSingle",
   "Reverse Vee Nose": "liftOnly",
   "Flat Center": "flat",
   "Deep Single Concave": "single",
@@ -167,7 +169,7 @@ test.describe("BOTTOM's panel: every cut's own rows, the Teardrop's tick box and
 
           // The tick box on the three Nose singles only, ticked by the Teardrop's starting numbers alone.
           const tick = card(page, section).getByRole("checkbox", { name: CLOSES });
-          if (section === "nose" && kind === "single") {
+          if (section === "nose" && kind === "noseSingle") {
             if (name === "Teardrop Nose Concave") await expect(tick).toBeChecked();
             else await expect(tick).not.toBeChecked();
           } else {

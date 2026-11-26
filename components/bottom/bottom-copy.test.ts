@@ -164,6 +164,44 @@ describe("the floor sentence on the presets (the maths' own flags)", () => {
   }, 120_000);
 });
 
+describe("the floor's fix on a nose concave with a Rail Roll (quick 261125-mf8)", () => {
+  const ROLL_FIX = "Lower the Depth or the Rail Roll, or move the cut away from the tip.";
+
+  it("the Rail Roll's row words", () => {
+    expect(BOTTOM_COPY.railRoll).toBe("Rail Roll");
+    expect(BOTTOM_COPY.railRollLeft).toBe("Level to the rail");
+  });
+
+  it.each(SYSTEMS)("the rail form on a rolled cut names the roll in the fix (%s)", (system) => {
+    const floor = formatMark(BOTTOM_FLOOR, system);
+    const rails = flag("nose", [], [LENGTH - inchesToMm(2)]);
+    expect(floorWarning(rails, board, system, true)).toBe(
+      `This cut leaves the rail under ${floor} near the nose: the rail is thinner there than the floor. ${ROLL_FIX}`,
+    );
+    // both forms: the fix said once, the roll's
+    const both = floorWarning(flag("nose", [LENGTH - inchesToMm(3)], [LENGTH - inchesToMm(2)]), board, system, true)!;
+    expect(both.endsWith(ROLL_FIX)).toBe(true);
+    expect(both.split(ROLL_FIX)).toHaveLength(2);
+    expect(both).not.toContain(FIX);
+  });
+
+  it.each(SYSTEMS)("today's sentence, exactly, when only the stringer form holds or the cut has no roll (%s)", (system) => {
+    const stringer = flag("nose", [LENGTH - inchesToMm(3)], []);
+    expect(floorWarning(stringer, board, system, true)).toBe(floorWarning(stringer, board, system));
+    expect(floorWarning(stringer, board, system, true)!.endsWith(FIX)).toBe(true);
+    const rails = flag("nose", [], [LENGTH - inchesToMm(2)]);
+    expect(floorWarning(rails, board, system, false)).toBe(floorWarning(rails, board, system));
+    expect(floorWarning(rails, board, system)!.endsWith(FIX)).toBe(true);
+    expect(floorWarning(undefined, board, system, true)).toBeNull();
+  });
+
+  it.each(SYSTEMS)("DATA's floor note passes it through (%s)", (system) => {
+    const rails = flag("nose", [], [LENGTH - inchesToMm(2)]);
+    expect(dataFloorNote(rails, "Blended Nose Concave", board, system, true)).toBe(`Blended Nose Concave: ${floorWarning(rails, board, system, true)}`);
+    expect(dataFloorNote(rails, "Blended Nose Concave", board, system)).toBe(`Blended Nose Concave: ${floorWarning(rails, board, system)}`);
+  });
+});
+
 describe("the rows' words", () => {
   it("Trough At reads its mark from the stringer; Smoothness a percent", () => {
     expect(BOTTOM_COPY.fromStringer(formatMark(inchesToMm(4), "imperial"))).toBe('4" from the stringer');

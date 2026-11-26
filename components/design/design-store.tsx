@@ -129,6 +129,7 @@ import {
   switchChannelCount,
   switchChannelRun,
   switchTroughRun,
+  tidyRailRoll,
   type BoardBottom,
   type BottomBoard,
   type BottomChannelsSpec,
@@ -1530,12 +1531,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A slider on one of a section's cut rows (D-07, R4): the patch in the stored form (a station through
   // `storeCutStation`). When a station moved (`changed`), Start ≥ Deepest ≥ End is kept in the same step, the dragged
   // one winning (`keepStationsInOrder`) — so a drag that pushes the other two is still one undo step, under one key per
-  // field dragged.
+  // field dragged. A nose concave's Rail Roll dragged back to 0 stores no key (`tidyRailRoll`, quick 261125-mf8), so the
+  // board saves exactly as one never rolled.
   const updateBottomCut = (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => {
     if (lockedRef.current) return;
     noteEdit(`bottom:${section}:${patchKey(patch)}`);
     setState((prev) => {
-      const patched: BottomCutSpec = { ...prev.bottom[section], ...patch };
+      const patched: BottomCutSpec = tidyRailRoll(section, { ...prev.bottom[section], ...patch });
       // A double's Off Rail, Off Stringer or Trough At moved keeps its flat and trough in order the sketch's way
       // (`normalize` runs on every drag, template.html line 1017): `keepStationsInOrder` read with Deepest At as the
       // station that moved, which pushes no station that is already in order and keeps the two across marks.

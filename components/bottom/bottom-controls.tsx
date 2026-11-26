@@ -22,6 +22,7 @@ import {
   DOUBLE_TROUGH_RUNS,
   channelReadout,
   snapChannelAngle,
+  takesRailRoll,
   stationFromNearestTip,
   storeChannelStation,
   storeCutStation,
@@ -91,7 +92,7 @@ type StationField = (typeof STATION_FIELDS)[number];
 const STATION_LABEL: Record<StationField, string> = { start: BOTTOM_COPY.start, deepest: BOTTOM_COPY.deepestAt, end: BOTTOM_COPY.end };
 
 /** A cut's mark rows (UI-SPEC §1's slider table). */
-type MarkField = "offRail" | "offStringer" | "troughAt" | "troughStart" | "troughEnd" | "depth" | "veeLift";
+type MarkField = "offRail" | "offStringer" | "troughAt" | "troughStart" | "troughEnd" | "depth" | "veeLift" | "railRoll";
 interface MarkRowSpec {
   label: string;
   /** The slider's inch range; `measureSlider` rounds it inward onto whole millimetres in Metric. */
@@ -110,6 +111,8 @@ const MARK_ROWS: Record<MarkField, MarkRowSpec> = {
   troughEnd: { label: BOTTOM_COPY.troughAtEnd, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
   depth: { label: BOTTOM_COPY.depth, rangeIn: BOTTOM_MARK_RANGES_IN.depth, leftHint: BOTTOM_COPY.depthLeft },
   veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: BOTTOM_MARK_RANGES_IN.veeLift },
+  // A nose concave's Rail Roll (quick 261125-mf8, D-01): a height, so it steps and reads as a Depth does.
+  railRoll: { label: BOTTOM_COPY.railRoll, rangeIn: BOTTOM_MARK_RANGES_IN.railRoll, leftHint: BOTTOM_COPY.railRollLeft },
 };
 
 /** One row of a cut's card. */
@@ -117,16 +120,18 @@ type CutRow = MarkField | StationField | "smoothness" | "troughRun";
 
 /**
  * Which rows a cut shows, in D-04's order (UI-SPEC § The side panel, the "Shown for" column): Off Rail on a single or a
- * double (the Spiral Vee is one), Off Stringer on a double, the Tri-Plane and a belly (a belly's flat panel, quick
+ * double (the Spiral Vee is one), right after it the Rail Roll on the three nose concaves (quick 261125-mf8, D-01), Off
+ * Stringer on a double, the Tri-Plane and a belly (a belly's flat panel, quick
  * 261116-jqz), Trough At on a double, then Start, Deepest
  * At, End and Depth on every cut but a flat (a vee's or belly's Depth is its lift at the rail, still labelled Depth),
  * Vee Lift on the Spiral Vee, and Smoothness. A flat shows none. Which rows to draw is the screen's question; every
  * number in them is the maths'.
  */
-function cutRows(cut: Pick<ResolvedCut, "kind" | "name" | "spiral" | "troughRun">): CutRow[] {
+function cutRows(cut: Pick<ResolvedCut, "section" | "kind" | "name" | "spiral" | "troughRun">): CutRow[] {
   if (cut.kind === "flat") return [];
   const rows: CutRow[] = [];
   if (cut.kind === "single" || cut.kind === "double") rows.push("offRail");
+  if (takesRailRoll(cut.section, cut.name)) rows.push("railRoll");
   if (cut.kind === "double" || cut.kind === "belly" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
   // A double's Trough menu (quick 261115-mc1), then the distances its rule reads: Trough At under Parallel, Trough at
   // Start and Trough at End under By hand; Centered has no distance to set.
@@ -288,6 +293,7 @@ export const BottomControls = memo(function BottomControls({
             floorFlags.find((flag) => flag.section === section),
             bottomBoard,
             system,
+            resolvedBottom[section].railRoll > 0,
           )}
           flatNote={section === "tail" && channelsCut ? CHANNELS_COPY.flatNoteWithChannels : BOTTOM_COPY.flatNote}
           onLive={() => onLive(section)}
@@ -346,8 +352,8 @@ interface BottomSectionCardProps {
 }
 
 /** One section's card: RAILS' group (`flex flex-col gap-3.5`), its heading echoing the cut, the `Cut` menu, then the
- * flat note or the cut's own rows, then (on a Nose single) the tick box, then (TAIL) the CHANNELS block. A press
- * anywhere in it makes it the live cut. */
+ * flat note or the cut's own rows (a nose concave's Rail Roll right after its Off Rail), then (on a Nose single) the tick
+ * box, then (TAIL) the CHANNELS block. A press anywhere in it makes it the live cut. */
 function BottomSectionCard({
   section,
   spec,
@@ -830,12 +836,13 @@ function ChannelStationRow({
 /** A mark slider's right-hand hint: the slider's own maximum, written as a mark — never a separately formatted bound,
  * so Metric's Depth reads `12 mm` under a slider that stops at 12 (UI-SPEC § Already done). */
 function maxHint(view: { max: number; toMm: (v: number) => Mm }, system: UnitsSystem, field?: MarkField): string {
-  return field === "depth" ? formatBottomDepth(view.toMm(view.max), system) : formatMark(view.toMm(view.max), system);
+  return field === "depth" || field === "railRoll" ? formatBottomDepth(view.toMm(view.max), system) : formatMark(view.toMm(view.max), system);
 }
 
 /**
- * One mark row — Off Rail, Off Stringer, Trough At, Depth or Vee Lift (UI-SPEC §1): 1/16" steps (1 mm in Metric) through
- * `measureSlider`, the value a mark (`formatMark`), its left hint and the slider's own max under the track, or none.
+ * One mark row — Off Rail, Off Stringer, Trough At, Depth, Vee Lift or a nose concave's Rail Roll (UI-SPEC §1): 1/16"
+ * steps (1 mm in Metric) through `measureSlider`, the value a mark (`formatMark`), its left hint and the slider's own max
+ * under the track, or none. A Depth and a Rail Roll step and read finer, as heights (below).
  * `name` is the slider's spoken name (`Center Off Rail`, `Channels Depth`).
  */
 function MarkRow({
@@ -852,14 +859,15 @@ function MarkRow({
   onChange: (value: Mm) => void;
 }) {
   const row = MARK_ROWS[field];
-  // A Depth steps 1/64" (0.1 mm in Metric) and reads to it (quick 261116-tqs, D-09); every other mark steps 1/16" (1 mm).
-  const slider =
-    field === "depth"
-      ? measureSlider(value, row.rangeIn, BOTTOM_DEPTH_STEP_IN, BOTTOM_DEPTH_STEP_MM, system)
-      : measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
+  // A Depth steps 1/64" (0.1 mm in Metric) and reads to it (quick 261116-tqs, D-09), and so does a nose concave's Rail
+  // Roll, a height of the same family (quick 261125-mf8, D-01); every other mark steps 1/16" (1 mm).
+  const height = field === "depth" || field === "railRoll";
+  const slider = height
+    ? measureSlider(value, row.rangeIn, BOTTOM_DEPTH_STEP_IN, BOTTOM_DEPTH_STEP_MM, system)
+    : measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
   // A depth or a lift that is there never reads as nothing (the founder, 2026-11-10): one too small for the tape reads
   // `<1/64"` (`<0.1 mm`) for a depth, `<1/16"` (`<1 mm`) for a lift, not `0"`.
-  const mark = field === "depth" ? formatBottomDepth(value, system) : field === "veeLift" ? formatMarkOrLess(value, system) : formatMark(value, system);
+  const mark = height ? formatBottomDepth(value, system) : field === "veeLift" ? formatMarkOrLess(value, system) : formatMark(value, system);
   const words = row.words ? row.words(mark) : mark;
   return (
     <SliderRow

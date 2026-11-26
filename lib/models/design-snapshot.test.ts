@@ -1655,3 +1655,82 @@ describe("a polished bottom's off-step numbers survive the board reader (quick 2
     }
   });
 });
+
+describe("a nose concave's Rail Roll rides on the cut, optional and forgiving on its own (quick 261125-mf8, D-04)", () => {
+  const board = designBottomBoard(
+    FIXTURES[0].outline,
+    buildOutline(FIXTURES[0].outline),
+    designSideProfile(FIXTURES[0], LIVE_DESIGN_RULES),
+    designFinPlacement(FIXTURES[0]),
+  );
+  const NOSE_CONCAVES: readonly string[] = ["Teardrop Nose Concave", "Blended Nose Concave", "Slight Single Concave Entry"];
+  const noseWith = (patch: Record<string, unknown>) => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, nose: startingCut("nose", "Blended Nose Concave", board) };
+    const stored = JSON.parse(JSON.stringify(buildSnapshot({ ...FIXTURES[0], bottom }))) as { version: number; design: { bottom: { nose: Record<string, unknown> } } };
+    Object.assign(stored.design.bottom.nose, patch);
+    return { stored, bottom };
+  };
+
+  it("a board saved without a roll opens with no railRoll key, and saves again the same way", () => {
+    const { stored, bottom } = noseWith({});
+    expect("railRoll" in stored.design.bottom.nose).toBe(false);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(Object.keys(opened.bottom!.nose)).toEqual(Object.keys(bottom.nose));
+    expect("railRoll" in opened.bottom!.nose).toBe(false);
+    expect(roundTrip(opened).bottom).toEqual(opened.bottom);
+  });
+
+  it("a roll on each of the three nose concaves comes back exactly, the version still 5", () => {
+    for (const name of ["Teardrop Nose Concave", "Blended Nose Concave", "Slight Single Concave Entry"] as const) {
+      const bottom: BoardBottom = { ...DEFAULT_BOTTOM, nose: { ...startingCut("nose", name, board), railRoll: mm(inchesToMm(11 / 64)) } };
+      expect(buildSnapshot({ ...FIXTURES[0], bottom }).version).toBe(5);
+      const opened = roundTrip({ ...FIXTURES[0], bottom }).bottom!;
+      expect(opened, name).toEqual(bottom);
+      expect(opened.nose.railRoll, name).toBe(bottom.nose.railRoll);
+    }
+  });
+
+  it("a roll of 0, a negative one, one that is not a number, or one past the outer bound leaves no key and keeps the cut", () => {
+    const BAD: [string, unknown][] = [
+      ["zero", 0],
+      ["below zero", -1],
+      ["not a number (stored as nothing)", null],
+      ["in words", "x"],
+      ["a box", {}],
+      ["a billion millimetres", 1e9],
+      ["just past the outer bound", inchesToMm(1) + 1],
+    ];
+    for (const [what, value] of BAD) {
+      const { stored, bottom } = noseWith({ railRoll: value });
+      expect(() => parseSnapshot(stored), what).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom!.nose, what).toEqual(bottom.nose);
+      expect("railRoll" in opened.bottom!.nose, what).toBe(false);
+      expect(opened.outline, what).toEqual(FIXTURES[0].outline);
+    }
+  });
+
+  it("a roll stored on any cut that is not a nose concave leaves no key and keeps the cut", () => {
+    for (const section of BOTTOM_SECTIONS) {
+      for (const name of BOTTOM_CUT_NAMES[section]) {
+        if (section === "nose" && NOSE_CONCAVES.includes(name)) continue;
+        const cut = startingCut(section, name, board);
+        // Natural, so a bottom whose one cut is a flat is still written and its cut can be tampered with.
+        const bottom: BoardBottom = { ...DEFAULT_BOTTOM, [section]: cut, wingRule: "natural" };
+        const stored = JSON.parse(JSON.stringify(buildSnapshot({ ...FIXTURES[0], bottom }))) as { design: { bottom: Record<string, Record<string, unknown>> } };
+        stored.design.bottom[section].railRoll = inchesToMm(1 / 4);
+        const opened = parseSnapshot(stored);
+        expect(opened.bottom![section], name).toEqual(cut);
+        expect("railRoll" in opened.bottom![section], name).toBe(false);
+      }
+    }
+  });
+
+  it("a roll at the outer bound is still a board the app can work out", () => {
+    const { stored } = noseWith({ railRoll: inchesToMm(1) });
+    const opened = parseSnapshot(stored);
+    expect(opened.bottom!.nose.railRoll).toBe(inchesToMm(1));
+    expect(() => summarizeDesign(opened)).not.toThrow();
+    expect(Number.isFinite(summarizeDesign(opened).volumeLitres)).toBe(true);
+  });
+});

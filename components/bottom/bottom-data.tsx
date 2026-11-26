@@ -102,6 +102,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
         section === "channels" ? "" : resolved[section].name,
         board,
         system,
+        section !== "channels" && resolved[section].railRoll > 0,
       ),
     )
     .filter((note): note is string => note !== null);
