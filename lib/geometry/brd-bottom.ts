@@ -72,17 +72,38 @@
  *     (first step 1/16", `BRD_BOTTOM_POLISH_ROLL_IN`, held to the slider's 0 to 1/2"). The answer is kept when its shown figure
  *     (the widest plus the typical miss, measured on the file's own sections) is lower: by `BRD_BOTTOM_EXTRA_CUT_MM` (0.25 mm)
  *     when the retry changed the nose's name, by more than rounding noise when the nose already was a Blended Nose Concave
- *     (spike 005's own bar, which the founder's approved table was measured with). Under the 1 mm gate a file opens exactly as
- *     before: without it, the roll went onto files that already fit. The roll is never in the seed, the grid search, the name
+ *     (spike 005's own bar, which the founder's approved table was measured with). Under the 1 mm gate (and, since quick
+ *     261125-v2f, showing no dish across the nose: below) a file opens exactly as before: without the gate, the roll went onto
+ *     files that already fit. The roll is never in the seed, the grid search, the name
  *     choice, the Tri-Plane rule, the Spiral Vee offer, the rails-first try or the order choice: offered to the grid, it flipped
  *     the founder's testLB to rails first (spike 005, step 5). Measured through the real import on his twelve files: 92Log
  *     1.58 / 0.44 to 1.28 / 0.38 mm (its Flat Entry now a Blended Nose Concave with an 11/64" roll), Scoop-Noserider 1.18 / 0.36
  *     to 1.01 / 0.37 (19/64"), testLB 2.08 / 0.26 to 1.45 / 0.21 (its Teardrop now a Blended Nose Concave, 7/64"); the other nine
- *     identical; those three take about 0.5 to 1.3 s longer to open. The limits, measured on the app's own boards: a small roll
- *     (1/8" or 3/16" on the Mid-length) opens with a centre belly standing in for it, under the gate; a board that does come
- *     back with its roll usually keeps a leftover 1/16" centre cut, the belly or single the name choice read the roll as; a
- *     Longboard, read rails first, hides most of its roll in the rail; a Slight Single Concave Entry with a roll came back as a
- *     Rolled Belly Entry; and the one retry, from 1/16", can lose what a deeper fitted nose had.
+ *     identical; those three take about 0.5 to 1.3 s longer to open.
+ *     **The dish across the nose, the fitted concave and the leftover centre cut** (quick 261125-v2f, the founder, 2026-11-25,
+ *     after spike 007: "Any ideas on how to get the board to import with the rail roll even with the shallow concaves?", then
+ *     "1 yes build it"). Most of the app's own boards with a small roll were under the gate and opened with a stray 1/16" belly
+ *     in the centre standing in for the roll; those that were retried, from a fresh 1/16" start, kept that leftover centre cut.
+ *     So the nose is now also tried when the file's own nose sections show a dish that turns up again before the rail
+ *     (`brdNoseDish`: at least `BRD_BOTTOM_DISH_MM` below the stringer, lowest at least `BRD_BOTTOM_DISH_OUT` of the way out,
+ *     climbing back at least `BRD_BOTTOM_DISH_TURN_MM`), which a belly never shows. The tries, each polished once with the roll
+ *     free over the centre and tail as they are: the nose concave the fit already found, with its own name and depth; mf8's
+ *     fresh start when the file is over the gate or no concave was fitted (so a file over 1 mm keeps what it had); and a start
+ *     seeded from the dish (its depth, Off Rail at the dish's lowest point, the roll that gives its turn). When the centre holds
+ *     a cut, the closest of them is polished once more over a flat centre, so the roll can take the place of the leftover cut.
+ *     `chooseBrdNoseRetry` keeps the fit's rules (fewest cuts; 0.25 mm for a renamed nose or a cut more), with one exception, the
+ *     founder's tie ("concave in the nose is super common and should win", `BRD_BOTTOM_CONCAVE_TIE_MM`): a nose concave with a
+ *     Rail Roll that replaces a belly without adding a cut is kept up to 0.05 mm further off. The dish, the tries and the tie are
+ *     never part of the seed, the grid, the name choice, the Tri-Plane rule, the Spiral Vee offer, the rails-first try or the
+ *     order choice; all of those stand as written above. Measured (spike 007, through the real import): of 192 of the app's
+ *     own boards written with a nose concave 1/16" to 1/4" deep and a Rail Roll 1/16" to 1/4", 158 come back as a nose concave
+ *     with a roll where 67 did, 145 with the roll and the depth within 1/16" where 57 did, 144 with no other cut where 29 did
+ *     (Shortboard 48 of 48, Mid-length 47, Fish 48, Longboard 15); none of the 48 with a real belly comes back as a concave.
+ *     The founder's twelve files open as before (testLB's typical miss 0.214 to 0.213 mm; the dish shows on exactly the three
+ *     files already over the gate). The limits: a Longboard, read rails first, mostly keeps its roll in the rail (15 of 48); a
+ *     Teardrop or a Slight Single Concave Entry often comes back named Blended Nose Concave; nine boards trade up to 0.13 mm of
+ *     their widest miss for the single written cut, by the fewest-cuts rule; about 1 s more to open on the three nose files, up
+ *     to about 2 s on a board tried for its dish.
  *
  * **Between the file's sections.** An AkuShaper file holds only 3 to 5 usable sections, and a slider fitted to so few can fade
  * a cut in and out between two of them where nothing is measured (measured: a 7/16" nose concave fading from nothing to full
@@ -123,6 +144,7 @@ import {
   keepStationsInOrder,
   railRollAcross,
   railRollAlong,
+  railRollOf,
   resolveBottom,
   resolveCut,
   sectionsFoamOff,
@@ -186,15 +208,49 @@ export const BRD_BOTTOM_MARK_COARSE_IN = 1 / 4;
 /** A rising section whose height halfway across is under this share of its rise at the end reads as a belly, not a vee. */
 export const BRD_BOTTOM_BELLY_SHARE = 1 / 3;
 /**
- * The nose is tried once more with a Rail Roll (quick 261125-mf8, stage 7 of the header) only on a file whose widest bottom miss
- * is still over this after the polish. Measured: without it the roll went onto files that already fit (spike 005); with it the
- * eight of the founder's twelve files already under it open exactly as before, in the same time.
+ * The nose is tried once more with a Rail Roll (quick 261125-mf8, stage 7 of the header) on a file whose widest bottom miss
+ * is still over this after the polish, and also (quick 261125-v2f) on a file whose nose shows a dish that turns up again
+ * before the rail (`brdNoseDish`). Measured: without a gate the roll went onto files that already fit (spike 005); with it the
+ * eight of the founder's twelve files already under it, none of which shows such a dish, open exactly as before, in the same time.
+ * A file over it keeps mf8's own start, a fresh Blended Nose Concave (spike 007: Scoop-Noserider needs it).
  */
 export const BRD_BOTTOM_NOSE_RETRY_MM: Mm = mm(1);
-/** The Rail Roll the nose retry starts from (inches): spike 005's measured start. */
+/**
+ * The Rail Roll the nose retry starts from (inches): spike 005's measured start. Also the roll given to a fitted nose concave
+ * that has none when the retry starts from it, and the dish's seed when the roll's share across is too small to read it from.
+ */
 export const BRD_BOTTOM_NOSE_RETRY_ROLL_IN = 1 / 8;
 /** The Rail Roll's first polish step (inches), a Depth's own 1/16" grid step: spike 005's measured step. */
 export const BRD_BOTTOM_POLISH_ROLL_IN = 1 / 16;
+/**
+ * The shape across the nose (quick 261125-v2f, spike 007's idea 2): a nose section's lowest point must stand at least this far
+ * below the stringer for it to show a dish. Spike 007's starting values, these four together: on 296 of the app's own boards
+ * written to a file the dish showed on 166 of the 192 with a rolled nose concave and on none of the 48 with a belly and no nose
+ * concave; of the founder's twelve files, on exactly the three already over the millimetre gate.
+ */
+export const BRD_BOTTOM_DISH_MM: Mm = mm(0.5);
+/** The dish must climb back at least this much toward the rail, by the edge of the reading. */
+export const BRD_BOTTOM_DISH_TURN_MM: Mm = mm(0.3);
+/**
+ * The dish's lowest point must stand at least this share of the way out from the stringer (and short of the reading's edge).
+ * A concave with a roll is lowest well out; a belly is lowest at the stringer and never shows one (spike 007).
+ */
+export const BRD_BOTTOM_DISH_OUT = 0.3;
+/** Readings within this of the lowest count as the lowest, and the outermost of them is taken as the dish's lowest point. */
+export const BRD_BOTTOM_DISH_LOWEST_MM: Mm = mm(0.05);
+/**
+ * The dish's seed reads its Rail Roll from the turn only where the roll's share across, at the edge of the reading, is over
+ * this; elsewhere it starts from `BRD_BOTTOM_NOSE_RETRY_ROLL_IN` (spike 007: the seed then gave the written roll back on the
+ * Shortboard at 1/16", 1/8" and 1/4").
+ */
+export const BRD_BOTTOM_DISH_SEED_SHARE = 0.1;
+/**
+ * The founder's tie (quick 261125-v2f, D-03; the founder, 2026-11-25: "concave in the nose is super common and should win"): a
+ * nose concave with a Rail Roll that replaces a belly, without adding a cut, is kept when it is no more than this further off
+ * (the widest plus the typical miss) than the belly it replaces. Measured: every tie from 0 to 0.10 mm gives the same answers on
+ * all 296 of the app's own boards and the founder's twelve files; the first real belly turns into a concave at 0.11 mm.
+ */
+export const BRD_BOTTOM_CONCAVE_TIE_MM: Mm = mm(0.05);
 
 /**
  * How many Depth steps there are: 1/16" to 1/2" (D-06). The fit's own depth grid stays 1/16" even though BOTTOM's Depth slider
@@ -1213,6 +1269,98 @@ export function brdStringerLift(bottom: BoardBottom, board: BottomBoard): (stati
   return (station) => sectionsFoamOff(resolved, board, station, mm(0));
 }
 
+/** The dish across a file's nose (`brdNoseDish`): where it shows, how it reads, and the nose concave it seeds. */
+export interface BrdNoseDish {
+  /** The section that turns up most, from the tail. */
+  station: Mm;
+  /** How far its lowest point stands below the stringer. */
+  dish: Mm;
+  /** How far its bottom climbs back from the lowest point to the edge of the reading. */
+  turn: Mm;
+  /** How far out its lowest point stands, as a share of the reading (0 at the stringer, 1 at the edge). */
+  out: number;
+  /** The seed's Depth: the deepest dish of every front-half section, held to BOTTOM's Depth range from 1/16". */
+  depth: Mm;
+  /** The seed's Off Rail: the rail to the lowest point, held to Off Rail's range. */
+  offRail: Mm;
+  /** The seed's Rail Roll: the turn read back through the roll's share across, held to 1/16" to 1/2" (else 1/8"). */
+  railRoll: Mm;
+}
+
+/**
+ * The shape across the nose (quick 261125-v2f, spike 007's idea 2), read on the file's own sections in the front half of the
+ * board. A nose concave with a Rail Roll is lowest well out from the stringer and climbs back up before the rail; a belly is
+ * lowest at the stringer, so it never shows one (spike 007: none of 48 belly boards did). A section shows the dish when its
+ * lowest point (the outermost reading within `BRD_BOTTOM_DISH_LOWEST_MM` of the lowest) is at least `BRD_BOTTOM_DISH_OUT` of
+ * the way out and short of the edge, at least `BRD_BOTTOM_DISH_MM` below the stringer, and the bottom climbs back at least
+ * `BRD_BOTTOM_DISH_TURN_MM` by the edge of the reading. The section that climbs back most is the one read; null when none shows
+ * it. The seed it gives is a Blended Nose Concave's start for the nose retry: the deepest front-half dish as its Depth, Off
+ * Rail from the rail to the lowest point, and the roll that would give the turn (the turn over the roll's share across at the
+ * reading's edge, where that share is over `BRD_BOTTOM_DISH_SEED_SHARE`; else `BRD_BOTTOM_NOSE_RETRY_ROLL_IN`).
+ */
+export function brdNoseDish(sections: readonly BrdBottomSection[], board: BottomBoard): BrdNoseDish | null {
+  const J = BRD_BOTTOM_ACROSS_STEPS;
+  const step = inchesToMm(BOTTOM_MARK_STEP_IN);
+  let found: Omit<BrdNoseDish, "depth"> | null = null;
+  let deepest = 0;
+  for (const s of sections) {
+    if (s.station < board.length / 2) continue;
+    let lowest = Infinity;
+    for (const v of s.file) if (v < lowest) lowest = v;
+    let at = 0;
+    for (let j = 0; j <= J; j++) if (s.file[j] <= lowest + BRD_BOTTOM_DISH_LOWEST_MM) at = j;
+    const turn = s.file[J] - lowest;
+    const dish = -lowest;
+    if (dish > deepest) deepest = dish;
+    if (at < J && at >= BRD_BOTTOM_DISH_OUT * J && turn >= BRD_BOTTOM_DISH_TURN_MM && dish >= BRD_BOTTOM_DISH_MM) {
+      const offRail = Math.min(
+        inchesToMm(BOTTOM_MARK_RANGES_IN.offRail.max),
+        Math.max(inchesToMm(BOTTOM_MARK_RANGES_IN.offRail.min), board.railAt(s.station) - s.across[at]),
+      );
+      const share = railRollAcross({ offRail: mm(offRail) }, board, "narrowest", s.station, s.window);
+      const railRoll =
+        share > BRD_BOTTOM_DISH_SEED_SHARE
+          ? Math.min(inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max), Math.max(step, turn / share))
+          : inchesToMm(BRD_BOTTOM_NOSE_RETRY_ROLL_IN);
+      if (!found || turn > found.turn) found = { station: s.station, dish: mm(dish), turn: mm(turn), out: at / J, offRail: mm(offRail), railRoll: mm(railRoll) };
+    }
+  }
+  if (!found) return null;
+  return { ...found, depth: mm(Math.min(inchesToMm(BOTTOM_DEPTH_RANGE_IN.max), Math.max(step, deepest))) };
+}
+
+/**
+ * The nose retry's choice (quick 261125-v2f, stage 7 of the header): `today` is the polished bottom as it stands, `tried` the
+ * retry's polished tries, each with its shown figure (the widest plus the typical miss, on the file's own sections). The rules
+ * the fit always keeps stand: a try must beat today by `BRD_BOTTOM_EXTRA_CUT_MM` (a renamed nose or a cut more), by more than
+ * rounding noise when it keeps today's nose name and cuts, and it may be up to `BRD_BOTTOM_EXTRA_CUT_MM` further off when it
+ * has fewer cuts. The one exception is the founder's tie (D-03): a try whose nose is a concave with a Rail Roll, which replaces
+ * a belly (today's nose a belly and the try's a nose concave, or today's centre a belly or a vee and the try's flat) without
+ * adding a cut, may be up to `BRD_BOTTOM_CONCAVE_TIE_MM` further off. None passing keeps `today` itself; else, of the passing
+ * tries within `BRD_BOTTOM_EXTRA_CUT_MM` of the closest, the closest of those with the fewest cuts.
+ */
+export function chooseBrdNoseRetry<T extends { specs: Record<BottomSectionKey, BottomCutSpec>; shown: number }>(today: T, tried: readonly T[]): T {
+  const todayCuts = cutsIn(today.specs);
+  const noseKind = cutKind(today.specs.nose.name);
+  const centreKind = cutKind(today.specs.center.name);
+  const centreLift = centreKind === "belly" || centreKind === "vee";
+  const passing = tried.filter((t) => {
+    const cuts = cutsIn(t.specs);
+    const replacesBelly =
+      (noseKind === "belly" && cutKind(t.specs.nose.name) === "single") || (centreLift && cutKind(t.specs.center.name) === "flat");
+    let bar: number = BRD_BOTTOM_EXTRA_CUT_MM;
+    if (t.specs.nose.name === today.specs.nose.name && cuts === todayCuts) bar = Math.min(bar, NOISE);
+    if (cuts < todayCuts) bar = Math.min(bar, -BRD_BOTTOM_EXTRA_CUT_MM);
+    if (replacesBelly && cuts <= todayCuts && railRollOf("nose", t.specs.nose) > 0) bar = Math.min(bar, -BRD_BOTTOM_CONCAVE_TIE_MM);
+    return t.shown < today.shown - bar;
+  });
+  if (passing.length === 0) return today;
+  const closest = Math.min(...passing.map((t) => t.shown));
+  const near = passing.filter((t) => t.shown <= closest + BRD_BOTTOM_EXTRA_CUT_MM);
+  const fewest = Math.min(...near.map((t) => cutsIn(t.specs)));
+  return near.filter((t) => cutsIn(t.specs) === fewest).sort((a, b) => a.shown - b.shown)[0];
+}
+
 /**
  * The chosen bottom polished at any value (quick 261116-tqs): the same scorer the fit used, over the same read sections and
  * blends (`sections` are the fit's own, which carry the windows they were read at), with every cut's sliders free to land
@@ -1225,31 +1373,63 @@ export function brdStringerLift(bottom: BoardBottom, board: BottomBoard): (stati
  * than the grid answer's. Measured: the founder's twelve files all pass; a file the app wrote itself, whose grid answer is
  * already within 0.02 mm, would otherwise have been pulled to 0.39 mm by the flat reading, and it now comes back as it was.
  *
- * Then the one exception to "names are never changed" (quick 261125-mf8, stage 7 of the header): a file whose widest miss is
- * still over `BRD_BOTTOM_NOSE_RETRY_MM` has its nose tried once more as a Blended Nose Concave, 1/16" deep, with a 1/8" Rail
- * Roll, polished with the roll free, and kept only when its shown figure is lower by `BRD_BOTTOM_EXTRA_CUT_MM` (the nose's name
- * changed) or by more than rounding noise (it already was a Blended Nose Concave). A file under the gate comes back exactly
- * as it did before.
+ * Then the one exception to "names are never changed" (stage 7 of the header): the nose tried once more with a Rail Roll, on a
+ * file whose widest miss is still over `BRD_BOTTOM_NOSE_RETRY_MM` (quick 261125-mf8) or whose nose shows a dish that turns up
+ * again before the rail (`brdNoseDish`, quick 261125-v2f). Up to three starts, each polished once with the roll free over the
+ * centre and tail as they are: the nose concave the fit already found, with its own name and depth (and a 1/8" roll when it has
+ * none); mf8's fresh Blended Nose Concave, 1/16" deep with a 1/8" roll, on a file over the gate or when no concave was fitted;
+ * and a Blended Nose Concave seeded from the dish (its depth, Off Rail and roll). When the centre holds a cut, the closest of
+ * those starts is polished once more over a flat centre, so the roll can take the place of the leftover centre cut the grid
+ * read it as. `chooseBrdNoseRetry` then decides, each try measured the way a shaper is shown it, on the file's own sections. A
+ * file under the gate that shows no dish (eight of the founder's twelve, and every board with a real belly) comes back exactly
+ * as it did before, with no more work.
  */
 export function polishBrdBottom(bottom: BoardBottom, sections: readonly BrdBottomSection[], board0: BottomBoard): BoardBottom {
   const scorer = brdBottomScorer(board0, brdBottomBlends(sections));
   const { specs } = scorer.polish({ nose: bottom.nose, center: bottom.center, tail: bottom.tail });
   const polished = { ...bottom, nose: specs.nose, center: specs.center, tail: specs.tail };
+  const close = (b: BoardBottom) => measureBrdBottom(b, sections, board0).closeness;
   const shown = (b: BoardBottom): number => {
-    const { largest, typical } = measureBrdBottom(b, sections, board0).closeness;
+    const { largest, typical } = close(b);
     return largest + typical;
   };
   const today = shown(polished) <= shown(bottom) + NOISE ? polished : bottom;
 
-  // The nose tried once more with a Rail Roll, only on a file still over the millimetre gate.
-  if (!(measureBrdBottom(today, sections, board0).closeness.largest > BRD_BOTTOM_NOSE_RETRY_MM)) return today;
-  const nose: BottomCutSpec = {
-    ...startingCut("nose", "Blended Nose Concave", board0),
-    depth: inchesToMm(BOTTOM_MARK_STEP_IN),
-    railRoll: inchesToMm(BRD_BOTTOM_NOSE_RETRY_ROLL_IN),
+  // The nose tried once more with a Rail Roll: on a file still over the millimetre gate, or whose nose shows a dish that turns up.
+  const todayClose = close(today);
+  const overGate = todayClose.largest > BRD_BOTTOM_NOSE_RETRY_MM;
+  const dish = brdNoseDish(sections, board0);
+  if (!overGate && dish === null) return today;
+
+  const retryRoll = inchesToMm(BRD_BOTTOM_NOSE_RETRY_ROLL_IN);
+  const ownIsConcave = takesRailRoll("nose", today.nose.name) && today.nose.depth > 0;
+  const starts: BottomCutSpec[] = [];
+  // The nose concave the fit already found, with its own name and depth (spike 007's idea 4).
+  if (ownIsConcave) starts.push({ ...today.nose, railRoll: railRollOf("nose", today.nose) > 0 ? today.nose.railRoll : retryRoll });
+  // mf8's own start: a fresh Blended Nose Concave from 1/16" with a 1/8" roll (D-02: a file over the gate keeps it).
+  if (overGate || !ownIsConcave) {
+    starts.push({ ...startingCut("nose", "Blended Nose Concave", board0), depth: inchesToMm(BOTTOM_MARK_STEP_IN), railRoll: retryRoll });
+  }
+  // The start the dish gives (spike 007's idea 2).
+  if (dish) {
+    starts.push({ ...startingCut("nose", "Blended Nose Concave", board0), depth: dish.depth, offRail: dish.offRail, railRoll: dish.railRoll });
+  }
+
+  type Try = { specs: Specs; shown: number; bottom: BoardBottom };
+  const attempt = (nose: BottomCutSpec, center: BottomCutSpec): Try => {
+    const more = scorer.polish({ nose, center, tail: today.tail }, true).specs;
+    const tried: BoardBottom = { ...today, nose: more.nose, center: more.center, tail: more.tail };
+    return { specs: more, shown: shown(tried), bottom: tried };
   };
-  const more = scorer.polish({ nose, center: today.center, tail: today.tail }, true).specs;
-  const tried: BoardBottom = { ...today, nose: more.nose, center: more.center, tail: more.tail };
-  const bar = today.nose.name === nose.name ? NOISE : BRD_BOTTOM_EXTRA_CUT_MM;
-  return shown(tried) < shown(today) - bar ? tried : today;
+  const tried = starts.map((nose) => ({ nose, result: attempt(nose, today.center) }));
+  // The leftover centre cut dropped (spike 007's idea 3): the closest start once more over a flat centre.
+  if (cutKind(today.center.name) !== "flat") {
+    const best = tried.reduce((a, b) => (a.result.shown <= b.result.shown ? a : b));
+    tried.push({ nose: best.nose, result: attempt(best.nose, startingCut("center", FLAT_CUT_NAMES.center, board0)) });
+  }
+  const todayTry: Try = { specs: { nose: today.nose, center: today.center, tail: today.tail }, shown: todayClose.largest + todayClose.typical, bottom: today };
+  return chooseBrdNoseRetry(
+    todayTry,
+    tried.map((t) => t.result),
+  ).bottom;
 }

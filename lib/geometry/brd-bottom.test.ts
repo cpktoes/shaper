@@ -926,11 +926,20 @@ describe("the polish: the chosen bottom's sliders land at any value, names held 
     expect(shown(polished, grid.sections).both).toBeLessThanOrEqual(shown(grid.bottom, grid.sections).both - BRD_BOTTOM_EXTRA_CUT_MM);
   }, LONG);
 
-  it("a 1/16\" Rail Roll, whose grid answer is already under the millimetre gate: no retry, the grid's names and no roll", () => {
+  // Rewritten by quick 261125-v2f (D-01's idea 3, told to the founder before the build): this case used to pin the leftover
+  // centre belly the grid reads a small roll as. The nose's dish now brings the retry, and the roll takes that belly's place.
+  it("a 1/16\" Rail Roll, whose grid answer is under the millimetre gate: the nose's dish brings the retry, and the roll takes the leftover centre belly's place (quick 261125-v2f)", () => {
     const { grid, polished } = both(rolledFile(1 / 16));
     expect(shown(grid.bottom, grid.sections).largest).toBeLessThan(BRD_BOTTOM_NOSE_RETRY_MM);
-    for (const key of KEYS) expect(polished[key].name).toBe(grid.bottom[key].name);
-    expect(noRollKey(polished)).toBe(true);
+    // The grid answer: the nose concave over a leftover centre cut, no roll.
+    expect(cutKind(grid.bottom.center.name)).not.toBe("flat");
+    expect(noRollKey(grid.bottom)).toBe(true);
+    // Polished: the grid's own nose name with about the written roll, and nothing in the centre or the tail.
+    expect(polished.nose.name).toBe(grid.bottom.nose.name);
+    expect(Math.abs((polished.nose.railRoll ?? 0) - I(1 / 16))).toBeLessThan(I(1 / 32));
+    expect(cutKind(polished.center.name)).toBe("flat");
+    expect(cutKind(polished.tail.name)).toBe("flat");
+    expect(shown(polished, grid.sections).largest).toBeLessThan(shown(grid.bottom, grid.sections).largest);
   }, LONG);
 
   it("the roll is never in the name choice: the grid answer carries no Rail Roll on any of the three files", () => {
