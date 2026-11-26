@@ -22,6 +22,7 @@ import {
   DOUBLE_TROUGH_RUNS,
   channelReadout,
   snapChannelAngle,
+  railRollOf,
   takesRailRoll,
   stationFromNearestTip,
   storeChannelStation,
@@ -179,7 +180,9 @@ interface BottomControlsProps {
  *
  * Every number is the store's: a slider writes the stored cut through `updateBottomCut` (one undo step per drag, Start
  * ≥ Deepest ≥ End kept in the same step), each row reads the RESOLVED cut — so a Tail cut's station pushed by the front
- * fins shows where it is (D-36) and nothing is written until the shaper moves a slider — every figure is written
+ * fins shows where it is (D-36) and nothing is written until the shaper moves a slider; the one exception is a nose
+ * concave's Rail Roll row, which reads the STORED roll and greys while Depth is 0, so dragging Depth back brings it
+ * back as it was (quick 261126-czw, D-01) — every figure is written
  * through `measure-display.ts` or `formatBottomStation` (CLAUDE.md Rule 2), and no number is worked out here (Rule 1).
  * On a locked board every control is greyed and still (the Selects and the tick box `disabled={locked}`, each
  * `SliderRow` reads the lock itself); the readout card is information and keeps its strength.
@@ -425,7 +428,10 @@ function BottomSectionCard({
             key={row}
             name={BOTTOM_COPY.sliderName(section, MARK_ROWS[row].label)}
             field={row}
-            value={resolved[row]}
+            // The Rail Roll row reads the STORED roll and greys while Depth is 0, where a concave cuts nothing and the
+            // roll it carries is none (quick 261126-czw, D-01): dragging Depth back brings the roll back as it was.
+            value={row === "railRoll" ? railRollOf(section, spec) : resolved[row]}
+            disabled={row === "railRoll" ? resolved.depth <= 0 : undefined}
             system={system}
             onChange={(value) => onChange({ [row]: value })}
           />
@@ -850,12 +856,15 @@ function MarkRow({
   field,
   value,
   system,
+  disabled,
   onChange,
 }: {
   name: string;
   field: MarkField;
   value: Mm;
   system: UnitsSystem;
+  /** Greys the row and stills its slider, the page's own disabled look; the lock greys it on its own inside `SliderRow`. */
+  disabled?: boolean;
   onChange: (value: Mm) => void;
 }) {
   const row = MARK_ROWS[field];
@@ -881,6 +890,7 @@ function MarkRow({
       rightHint={row.leftHint ? maxHint(slider, system, field) : undefined}
       sliderLabel={name}
       sliderValueText={words}
+      disabled={disabled}
       onValueChange={(v) => onChange(slider.toMm(v))}
     />
   );

@@ -1335,19 +1335,22 @@ export function brdNoseDish(sections: readonly BrdBottomSection[], board: Bottom
  * the fit always keeps stand: a try must beat today by `BRD_BOTTOM_EXTRA_CUT_MM` (a renamed nose or a cut more), by more than
  * rounding noise when it keeps today's nose name and cuts, and it may be up to `BRD_BOTTOM_EXTRA_CUT_MM` further off when it
  * has fewer cuts. The one exception is the founder's tie (D-03): a try whose nose is a concave with a Rail Roll, which replaces
- * a belly (today's nose a belly and the try's a nose concave, or today's centre a belly or a vee and the try's flat) without
- * adding a cut, may be up to `BRD_BOTTOM_CONCAVE_TIE_MM` further off. None passing keeps `today` itself; else, of the passing
- * tries within `BRD_BOTTOM_EXTRA_CUT_MM` of the closest, the closest of those with the fewest cuts.
+ * a belly (today's nose a belly and the try's a nose concave, or today's centre a belly and the try's flat) without adding a
+ * cut, may be up to `BRD_BOTTOM_CONCAVE_TIE_MM` further off. The tie is for a belly only, as the founder ruled it about a roll
+ * read as a belly ("concave in the nose is super common and should win", spike 007 / quick 261125-v2f): a centre vee replaced
+ * (the Tri-Plane Hull Center, the one centre vee) is held to the ordinary bars (quick 261126-czw, D-02). None passing keeps
+ * `today` itself; else, of the passing tries within `BRD_BOTTOM_EXTRA_CUT_MM` of the closest, the closest of those with the
+ * fewest cuts.
  */
 export function chooseBrdNoseRetry<T extends { specs: Record<BottomSectionKey, BottomCutSpec>; shown: number }>(today: T, tried: readonly T[]): T {
   const todayCuts = cutsIn(today.specs);
   const noseKind = cutKind(today.specs.nose.name);
   const centreKind = cutKind(today.specs.center.name);
-  const centreLift = centreKind === "belly" || centreKind === "vee";
+  const centreBelly = centreKind === "belly";
   const passing = tried.filter((t) => {
     const cuts = cutsIn(t.specs);
     const replacesBelly =
-      (noseKind === "belly" && cutKind(t.specs.nose.name) === "single") || (centreLift && cutKind(t.specs.center.name) === "flat");
+      (noseKind === "belly" && cutKind(t.specs.nose.name) === "single") || (centreBelly && cutKind(t.specs.center.name) === "flat");
     let bar: number = BRD_BOTTOM_EXTRA_CUT_MM;
     if (t.specs.nose.name === today.specs.nose.name && cuts === todayCuts) bar = Math.min(bar, NOISE);
     if (cuts < todayCuts) bar = Math.min(bar, -BRD_BOTTOM_EXTRA_CUT_MM);
@@ -1393,10 +1396,15 @@ export function polishBrdBottom(bottom: BoardBottom, sections: readonly BrdBotto
     const { largest, typical } = close(b);
     return largest + typical;
   };
-  const today = shown(polished) <= shown(bottom) + NOISE ? polished : bottom;
+  // Each of the two is measured once and the chosen one's closeness reused below: one measurement fewer per file, every
+  // answer the same (`measureBrdBottom` is pure; quick 261126-czw, D-04).
+  const polishedClose = close(polished);
+  const bottomClose = close(bottom);
+  const keepPolished = polishedClose.largest + polishedClose.typical <= bottomClose.largest + bottomClose.typical + NOISE;
+  const today = keepPolished ? polished : bottom;
 
   // The nose tried once more with a Rail Roll: on a file still over the millimetre gate, or whose nose shows a dish that turns up.
-  const todayClose = close(today);
+  const todayClose = keepPolished ? polishedClose : bottomClose;
   const overGate = todayClose.largest > BRD_BOTTOM_NOSE_RETRY_MM;
   const dish = brdNoseDish(sections, board0);
   if (!overGate && dish === null) return today;

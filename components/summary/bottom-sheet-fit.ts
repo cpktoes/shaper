@@ -14,7 +14,8 @@
  * And once the tables have gone, the page's own parts — the picture, the sections and the notes — can still fill it on
  * a board drawn tall with a cut in every section, or under a long note. The rule then gives the room itself: the bottom
  * from above, the page's one part made to give way, is drawn the fewest whole dots smaller that make the page fit
- * (`topViewRoom`, quick 261125-v2j), rather than left for the browser to squeeze, labels and all.
+ * (`topViewRoom`, quick 261125-v2j), rather than left for the browser to squeeze, labels and all — found by halving
+ * rather than one dot at a time, and never under half the picture's own room (quick 261126-czw, D-04).
  *
  * Pure and the same on the server and in the browser: nothing here measures a screen. The heights below are the
  * page's own parts as they measured on the two sheets this form prints on — a computer's printed sheet and a phone's —
@@ -62,7 +63,7 @@ export const BOTTOM_TABLES_BESIDE_MAX_COLUMNS = 6;
  * The top view's box for a board with this many cuts: the board's room, where the rows start, and the part of the
  * picture the page shows — from `top` down, `height` tall. `roomCap` is the most room the page gives the board — the
  * layout's `topViewRoom`, which is fewer dots than the board's natural room only on a page that would otherwise run
- * over its sheet (quick 261125-v2j); left out, the board takes its natural room, capped at `maxRoom`.
+ * over its sheet (quick 261125-v2j), and never under half of it (quick 261126-czw); left out, the board takes its natural room, capped at `maxRoom`.
  */
 export function bottomTopViewBox(
   board: Pick<BottomBoard, "length" | "widePointWidth">,
@@ -144,9 +145,10 @@ export interface BottomSheetLayout {
   sheets: 1 | 2 | 3;
   /**
    * The board's room in the top view, in the picture's dots (quick 261125-v2j): its natural room
-   * (`bottomTopViewBox(board, cuts.length).room`) on every page whose parts fit, and fewer whole dots — the fewest that
-   * make it fit — on a page whose picture, sections and How to shape notes would otherwise leave under the hairline once
-   * the tables have taken their own sheet. Only the board's own room shrinks; the rows' names, the labels and the rows
+   * (`bottomTopViewBox(board, cuts.length).room`) on every page whose parts fit, and fewer whole dots — the most whole
+   * dots that fit, found by halving (`bottomTopViewRoomThatFits`), never under half the natural room — on a page whose
+   * picture, sections and How to shape notes would otherwise leave under the hairline once the tables have taken their
+   * own sheet (quick 261126-czw, D-04). Only the board's own room shrinks; the rows' names, the labels and the rows
    * under the board stay full size.
    */
   topViewRoom: number;
@@ -232,8 +234,9 @@ const PAGE = {
   /**
    * The room a page must have left over to count as fitting. A hairline: the arithmetic agrees with the measured pages
    * to a fraction of a dot. Where the page's own parts would leave less, the rule itself draws the bottom's picture a
-   * few dots smaller (`BottomSheetLayout.topViewRoom`, quick 261125-v2j); the browser's own give-way on the picture is
-   * only the guard for a line another browser sets differently, so no row or note is ever cut off.
+   * few dots smaller (`BottomSheetLayout.topViewRoom`, quick 261125-v2j), down to half its room at most (quick
+   * 261126-czw); the browser's own give-way on the picture is the guard for a line another browser sets differently,
+   * and past that floor, so no row or note is ever cut off.
    */
   spare: 4,
 } as const;
@@ -373,13 +376,21 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
   // The page's own parts (quick 261125-v2j). Once the tables have left, the picture, the sections and the notes are all
   // that is on the page, and on a board drawn tall with a cut in every section and 8 channels — or with a long note —
   // they can still fill it. The picture is the page's one part made to give way, so the rule gives it: the board's room
-  // comes down a whole dot at a time until the page fits, and not a dot further. Where the tables stay on the page it
-  // already fits by the tables' own test above. Whether the tables leave was decided at the picture's whole room, so no
-  // board prints a sheet more or fewer for this.
-  let topViewRoom = bottomTopViewBox(board, cuts.length).room;
-  if (tablesOnOwnSheet) {
-    while (topViewRoom > 1 && spareAfter((sheet) => pageHeightWithoutTables(sheet, board, notes, topViewRoom)) < PAGE.spare) topViewRoom--;
-  }
+  // is the most whole dots that let the page fit, found by halving rather than one dot at a time (quick 261126-czw,
+  // D-04), and never under half the picture's own room (`BOTTOM_TOP_VIEW_MIN_ROOM_SHARE`). At that floor the rule stops
+  // giving: the picture is drawn at half its room and, if the page's own parts are still too tall, the browser's own
+  // give-way on the picture (the guard already in place) squeezes the rest, so nothing runs off the sheet. No board the
+  // tests or the two printed-page specs cover comes near it (v2j measured the deepest give at 166 of 190 dots). Where the
+  // tables stay on the page it already fits by the tables' own test above. Whether the tables leave was decided at the
+  // picture's whole room, so no board prints a sheet more or fewer for this.
+  const naturalRoom = bottomTopViewBox(board, cuts.length).room;
+  const topViewRoom = tablesOnOwnSheet
+    ? bottomTopViewRoomThatFits(
+        naturalRoom,
+        Math.max(1, Math.ceil(naturalRoom * BOTTOM_TOP_VIEW_MIN_ROOM_SHARE)),
+        (room) => spareAfter((sheet) => pageHeightWithoutTables(sheet, board, notes, room)) >= PAGE.spare,
+      )
+    : naturalRoom;
   return {
     cuts,
     notes,
@@ -395,6 +406,32 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
     sheets,
     topViewRoom,
   };
+}
+
+/**
+ * The least share of the top view's natural room the page gives the board (quick 261126-czw, D-04): the picture never
+ * comes down past half its own room to make the page fit.
+ */
+export const BOTTOM_TOP_VIEW_MIN_ROOM_SHARE = 0.5;
+
+/**
+ * The most whole dots of room, from `floor` up to `natural`, for which `fits` holds (quick 261126-czw, D-04): `natural`
+ * when it fits; `floor` when even the floor does not; otherwise a halving search between a fitting low end and a
+ * non-fitting high end. The page's height only grows with the room (`pageHeightWithoutTables` adds the room times the
+ * picture's scale and nothing else moves), so this is exactly the room a step-down one dot at a time finds, in about
+ * log2(natural) + 2 tries of `fits` instead of up to `natural`.
+ */
+export function bottomTopViewRoomThatFits(natural: number, floor: number, fits: (room: number) => boolean): number {
+  if (fits(natural)) return natural;
+  if (floor >= natural || !fits(floor)) return Math.min(floor, natural);
+  let low = floor;
+  let high = natural;
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2);
+    if (fits(mid)) low = mid;
+    else high = mid;
+  }
+  return low;
 }
 
 /** The room, in dots, a sheet must have left over for its parts to count as fitting (for the tests). */

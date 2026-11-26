@@ -37,10 +37,12 @@ import {
   BOTTOM_SHEET_SPARE,
   BOTTOM_TABLES_BESIDE_MAX_COLUMNS,
   BOTTOM_TOP_VIEW,
+  BOTTOM_TOP_VIEW_MIN_ROOM_SHARE,
   bottomSheetLayout,
   bottomSheetSpare,
   bottomSheetStationsLine,
   bottomTopViewBox,
+  bottomTopViewRoomThatFits,
   placeSheetGaugeLabels,
   type BottomSheetLayout,
 } from "./bottom-sheet-fit";
@@ -420,6 +422,80 @@ describe("the Rail Roll's line on paper (the founder, 2026-11-25, quick 261125-v
 const naturalRoom = (layout: BottomSheetLayout, board: BottomBoard) => bottomTopViewBox(board, layout.cuts.length).room;
 /** The page's spare room with the picture drawn at this room instead of the layout's. */
 const pageSpareAt = (layout: BottomSheetLayout, board: BottomBoard, room: number) => bottomSheetSpare({ ...layout, topViewRoom: room }, board).page;
+/**
+ * The room v2j's rule found, one dot at a time (quick 261126-czw's oracle, D-04): from the natural room, down a whole dot
+ * while above 1 and the page at that room leaves under the spare. The layout's halving search must land on exactly this.
+ */
+function dotByDotRoom(layout: BottomSheetLayout, board: BottomBoard): number {
+  let room = naturalRoom(layout, board);
+  while (room > 1 && pageSpareAt(layout, board, room) < BOTTOM_SHEET_SPARE) room--;
+  return room;
+}
+/** The floor the layout holds the room to: half the natural room, rounded up, never under 1. */
+const roomFloor = (layout: BottomSheetLayout, board: BottomBoard) => Math.max(1, Math.ceil(naturalRoom(layout, board) * BOTTOM_TOP_VIEW_MIN_ROOM_SHARE));
+
+/*
+ * Quick 261126-czw (D-04): the picture's room is searched by halving rather than stepped down a dot at a time, with a
+ * floor at half the natural room. On any page whose height only grows with the room, the search gives exactly the
+ * dot-by-dot answer, in about log2(natural) + 2 tries.
+ */
+describe("bottomTopViewRoomThatFits: the most whole dots that fit, by halving, never under the floor (quick 261126-czw, D-04)", () => {
+  /** The dot-by-dot loop over any `fits`. */
+  const stepDown = (natural: number, fits: (room: number) => boolean) => {
+    let room = natural;
+    while (room > 1 && !fits(room)) room--;
+    return room;
+  };
+  /** A page whose height grows by the picture's own scale per dot: `fits` while the spare left is the hairline or more. */
+  const linear = (page: number) => (room: number) => page - 1.069 * room >= 4;
+
+  it("equals the dot-by-dot loop for every natural room 1 to 190 and pages of many heights, wherever that answer is at or above the floor", () => {
+    let compared = 0;
+    let searched = 0;
+    for (let natural = 1; natural <= 190; natural++) {
+      const floor = Math.max(1, Math.ceil(natural * BOTTOM_TOP_VIEW_MIN_ROOM_SHARE));
+      for (let page = 0; page <= 220; page += 1.5) {
+        const fits = linear(page);
+        const expected = stepDown(natural, fits);
+        if (expected < floor) continue;
+        compared++;
+        if (expected < natural) searched++;
+        expect(bottomTopViewRoomThatFits(natural, floor, fits), `natural ${natural}, page ${page}`).toBe(expected);
+      }
+    }
+    expect(compared, "cases compared (non-vacuity)").toBeGreaterThan(10_000);
+    expect(searched, "and many of them searched below the natural room (non-vacuity)").toBeGreaterThan(1000);
+  });
+
+  it("returns the floor when nothing at or above it fits, and the natural room without searching when it fits", () => {
+    expect(bottomTopViewRoomThatFits(190, 95, () => false)).toBe(95);
+    expect(bottomTopViewRoomThatFits(190, 95, (room) => room <= 40)).toBe(95);
+    expect(bottomTopViewRoomThatFits(1, 1, () => false)).toBe(1);
+    let asked = 0;
+    expect(
+      bottomTopViewRoomThatFits(190, 95, () => {
+        asked++;
+        return true;
+      }),
+    ).toBe(190);
+    expect(asked).toBe(1);
+  });
+
+  it("asks the page at most about log2(natural) + 2 times", () => {
+    for (let natural = 2; natural <= 190; natural++) {
+      const floor = Math.max(1, Math.ceil(natural * BOTTOM_TOP_VIEW_MIN_ROOM_SHARE));
+      for (let fitting = floor; fitting < natural; fitting++) {
+        let asked = 0;
+        const room = bottomTopViewRoomThatFits(natural, floor, (r) => {
+          asked++;
+          return r <= fitting;
+        });
+        expect(room).toBe(fitting);
+        expect(asked, `natural ${natural}, fitting ${fitting}`).toBeLessThanOrEqual(Math.ceil(Math.log2(natural)) + 2);
+      }
+    }
+  });
+});
 
 /** Every sheet after the page has room, by the rules "every sheet the bottom prints on has room" holds. */
 function expectSheetsAfterThePageFit(layout: BottomSheetLayout, board: BottomBoard, what: string) {
@@ -511,6 +587,7 @@ describe("the picture gives the room a full page lacks, by the rule (quick 26112
     const LENGTHS_IN = [...Array.from({ length: 15 }, (_, k) => 48 + 6 * k), 137, 138, 138 + 1 / 16, 141, 144];
     let swept = 0;
     let gave = 0;
+    let ownSheet = 0;
     for (const preset of BOARD_PRESETS) {
       const fields = presetFields(preset.id);
       for (const lengthIn of LENGTHS_IN) {
@@ -526,6 +603,12 @@ describe("the picture gives the room a full page lacks, by the rule (quick 26112
               const layout = bottomSheetLayout(rolled, built.board, system, built.frontPair);
               swept++;
               if (layout.topViewRoom < naturalRoom(layout, built.board)) gave++;
+              if (layout.tablesOnOwnSheet) {
+                // Quick 261126-czw (D-04): the halving search lands on the dot-by-dot room, above the floor.
+                ownSheet++;
+                expect(layout.topViewRoom, what).toBe(dotByDotRoom(layout, built.board));
+                expect(layout.topViewRoom, what).toBeGreaterThan(roomFloor(layout, built.board));
+              }
               expect(bottomSheetSpare(layout, built.board).page, what).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
               expect(layout.notes[layout.cuts.findIndex((cut) => cut.key === "nose")].how.endsWith(` ${RAIL_ROLL_HOW}`), what).toBe(true);
               expect(layout.sheets, what).toBeGreaterThanOrEqual(bottomSheetLayout(flat, built.board, system, built.frontPair).sheets);
@@ -536,6 +619,7 @@ describe("the picture gives the room a full page lacks, by the rule (quick 26112
     }
     expect(swept, "layouts swept (non-vacuity)").toBeGreaterThan(1000);
     expect(gave, "some of them give the picture's room (non-vacuity)").toBeGreaterThan(0);
+    expect(ownSheet, "layouts whose tables take their own sheet, checked against the dot-by-dot room (non-vacuity)").toBeGreaterThan(0);
   }, 60_000);
 });
 
@@ -824,9 +908,16 @@ describe("the split's reach: no board up to 11'6\" ever splits, and every marked
 
   it("no page runs over its sheet: the picture gives room only where the page at its whole room would, and then the most that fits (quick 261125-v2j)", () => {
     let gave = 0;
+    let ownSheet = 0;
     for (const { what, layout, board } of [...fitting, ...over]) {
       if (layout.cuts.length === 0) continue;
       const natural = naturalRoom(layout, board);
+      if (layout.tablesOnOwnSheet) {
+        // Quick 261126-czw (D-04): the halving search lands on the dot-by-dot room, and never as low as the floor.
+        ownSheet++;
+        expect(layout.topViewRoom, what).toBe(dotByDotRoom(layout, board));
+        expect(layout.topViewRoom, what).toBeGreaterThan(roomFloor(layout, board));
+      }
       expect(bottomSheetSpare(layout, board).page, `${what}: the page's own parts do not fit their sheet`).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
       expect(layout.topViewRoom, what).toBeLessThanOrEqual(natural);
       const wholeRoom = pageSpareAt(layout, board, natural);
@@ -840,6 +931,7 @@ describe("the split's reach: no board up to 11'6\" ever splits, and every marked
       }
     }
     expect(gave, "some pages give the picture's room (non-vacuity)").toBeGreaterThan(0);
+    expect(ownSheet, "layouts whose tables take their own sheet, checked against the dot-by-dot room (non-vacuity)").toBeGreaterThan(0);
   }, 60_000);
 });
 

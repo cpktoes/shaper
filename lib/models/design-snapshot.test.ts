@@ -7,11 +7,14 @@ import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank, type TipStyle } f
 import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { buildBoardProfile } from "@/lib/geometry/board-profile";
-import { formatMark } from "@/lib/geometry/measure-display";
+import { formatMark, measureSlider } from "@/lib/geometry/measure-display";
 import { normalizeSpec, type BlankRockerSpec, type RockerChange } from "@/lib/geometry/custom-rocker";
 import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_DEPTH_STEP_IN,
+  BOTTOM_DEPTH_STEP_MM,
+  BOTTOM_MARK_RANGES_IN,
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
   bottomHasCut,
@@ -1698,7 +1701,10 @@ describe("a nose concave's Rail Roll rides on the cut, optional and forgiving on
       ["in words", "x"],
       ["a box", {}],
       ["a billion millimetres", 1e9],
-      ["just past the outer bound", inchesToMm(1) + 1],
+      // The roll's own bound is the Rail Roll slider's top, 1/2" (quick 261126-czw, D-03).
+      ["just past the slider's top", inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max) + 0.01],
+      ["3/4\"", inchesToMm(3 / 4)],
+      ["1\"", inchesToMm(1)],
     ];
     for (const [what, value] of BAD) {
       const { stored, bottom } = noseWith({ railRoll: value });
@@ -1726,11 +1732,30 @@ describe("a nose concave's Rail Roll rides on the cut, optional and forgiving on
     }
   });
 
-  it("a roll at the outer bound is still a board the app can work out", () => {
-    const { stored } = noseWith({ railRoll: inchesToMm(1) });
+  it("a roll at the slider's top, 1/2\", comes back exactly and is still a board the app can work out (quick 261126-czw, D-03)", () => {
+    const top = inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max);
+    const { stored } = noseWith({ railRoll: top });
     const opened = parseSnapshot(stored);
-    expect(opened.bottom!.nose.railRoll).toBe(inchesToMm(1));
+    expect(opened.bottom!.nose.railRoll).toBe(top);
     expect(() => summarizeDesign(opened)).not.toThrow();
     expect(Number.isFinite(summarizeDesign(opened).volumeLitres)).toBe(true);
+  });
+
+  it("each slider's own top, in Imperial and in Metric, stores a roll the reader keeps exactly (quick 261126-czw, D-03)", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const view = measureSlider(mm(0), BOTTOM_MARK_RANGES_IN.railRoll, BOTTOM_DEPTH_STEP_IN, BOTTOM_DEPTH_STEP_MM, system);
+      const top = view.toMm(view.max);
+      const { stored } = noseWith({ railRoll: top });
+      const opened = parseSnapshot(stored);
+      expect(opened.bottom!.nose.railRoll, system).toBe(top);
+      expect(Number.isFinite(summarizeDesign(opened).volumeLitres), system).toBe(true);
+    }
+  });
+
+  it("a nose Depth of 3/4\" with no roll still reads back as stored: Depth keeps its own 1\" bound (quick 261126-czw, D-03)", () => {
+    const { stored } = noseWith({ depth: inchesToMm(3 / 4) });
+    const opened = parseSnapshot(stored);
+    expect(opened.bottom!.nose.depth).toBe(inchesToMm(3 / 4));
+    expect(opened.bottom!.nose.name).toBe("Blended Nose Concave");
   });
 });

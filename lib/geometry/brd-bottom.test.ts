@@ -1066,6 +1066,23 @@ describe("the nose retry's choice, with the founder's tie in numbers (quick 2611
     expect(chooseBrdNoseRetry(today, [enough])).toBe(enough);
   });
 
+  it("today a Flat Entry over a Tri-Plane Hull Center (the one centre vee): the rolled concave over a flat centre takes no tie, a vee is held to the ordinary bar (quick 261126-czw, D-02)", () => {
+    expect(cutKind("Tri-Plane Hull Center")).toBe("vee");
+    const today = at(flat("nose"), cut("center", "Tri-Plane Hull Center"), T);
+    const tie = at(rolled, flat("center"), T + 0.8 * TIE);
+    const enough = at(rolled, flat("center"), T - 1.04 * EXTRA);
+    expect(chooseBrdNoseRetry(today, [tie])).toBe(today);
+    expect(chooseBrdNoseRetry(today, [enough])).toBe(enough);
+  });
+
+  it("today a Flat Entry over a Continuous Belly: the rolled concave over a flat centre (the same cuts) still takes the tie for a belly (quick 261126-czw, D-02)", () => {
+    const today = at(flat("nose"), cut("center", "Continuous Belly / Rolled Mid"), T);
+    const near = at(rolled, flat("center"), T + 0.8 * TIE);
+    const far = at(rolled, flat("center"), T + 1.2 * TIE);
+    expect(chooseBrdNoseRetry(today, [near])).toBe(near);
+    expect(chooseBrdNoseRetry(today, [far])).toBe(today);
+  });
+
   it("the same nose name and the same cuts win at any gain over rounding noise, and lose at none", () => {
     const today = at(cut("nose", "Blended Nose Concave"), flat("center"), T);
     const gain = at(rolled, flat("center"), T - I(1 / 64) / 1000);

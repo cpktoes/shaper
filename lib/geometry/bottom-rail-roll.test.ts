@@ -5,6 +5,7 @@ vi.setConfig({ testTimeout: 60_000 });
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_DEPTH_STEP_IN,
   BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
@@ -13,6 +14,8 @@ import {
   bottomFloorFlags,
   cutFoamOffParts,
   foamOff,
+  railRollInUse,
+  railRollOf,
   refAt,
   resolveBottom,
   resolveCut,
@@ -28,7 +31,7 @@ import {
   type BottomCutSpec,
   type ResolvedCut,
 } from "./bottom";
-import { bottomPrintLines } from "./bottom-print";
+import { bottomPrintCuts, bottomPrintLines } from "./bottom-print";
 import type { DesignSummaryFields } from "./design";
 import {
   bottomRailLift,
@@ -324,6 +327,41 @@ describe("only the three nose concaves take a Rail Roll (quick 261125-mf8, D-01)
             expect(p.lift).toBe(0);
             expect(foamOff(read, board, s, y)).toBe(0);
           }
+        }
+      }
+    }
+  });
+
+  it("a nose concave with Depth 0 carries no roll, yet keeps the stored one for when Depth comes back (quick 261126-czw, D-01)", () => {
+    for (const { id, board } of PRESETS) {
+      for (const name of NOSE_CONCAVES) {
+        const stored = noseBottom(board, name, { depth: mm(0), railRoll: ROLL });
+        const resolved = resolveBottom(stored, board);
+        expect(resolved.nose.railRoll, `${id} ${name}`).toBe(0);
+        expect(stored.nose.railRoll).toBe(ROLL);
+        expect(railRollOf("nose", stored.nose)).toBe(ROLL);
+        expect(railRollInUse("nose", stored.nose)).toBe(0);
+        expect(tidyRailRoll("nose", stored.nose)).toBe(stored.nose);
+        expect(bottomPrintCuts(resolved).some((c) => c.key === "nose"), `${id} ${name}`).toBe(false);
+        const back = { ...stored, nose: { ...stored.nose, depth: mm(inchesToMm(1 / 8)) } };
+        expect(resolveBottom(back, board).nose.railRoll, `${id} ${name}`).toBe(ROLL);
+      }
+    }
+  });
+
+  it("above Depth 0 the roll in use is the stored roll, and a cut that takes no roll carries none at any depth (quick 261126-czw, D-01)", () => {
+    const board = SHORT.board;
+    for (const depth of [BOTTOM_DEPTH_STEP_IN, 1 / 8, 1 / 2].map((d) => mm(inchesToMm(d)))) {
+      for (const name of NOSE_CONCAVES) {
+        const spec = noseBottom(board, name, { depth, railRoll: ROLL }).nose;
+        expect(railRollInUse("nose", spec), name).toBe(railRollOf("nose", spec));
+        expect(railRollInUse("nose", spec), name).toBe(ROLL);
+      }
+      for (const section of BOTTOM_SECTIONS) {
+        for (const name of BOTTOM_CUT_NAMES[section]) {
+          if (takesRailRoll(section, name)) continue;
+          const spec = { ...startingCut(section, name, board), depth, railRoll: ROLL };
+          expect(railRollInUse(section, spec), `${section} ${name}`).toBe(0);
         }
       }
     }

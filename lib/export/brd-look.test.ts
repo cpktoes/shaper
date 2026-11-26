@@ -184,4 +184,24 @@ describe("brdLookFromBytes on a board with a rolled nose concave (quick 261125-m
       expect(across).toBe(`${BRD_FIT_COPY.bottomSliderWords.offRail} ${formatMark(nose.offRail, system)} · ${BRD_FIT_COPY.bottomSliderWords.railRoll} ${formatBottomDepth(nose.railRoll!, system)}`);
     }
   });
+
+  it("the same opened look with its nose concave at Depth 0 names no roll in the Across cell, the roll kept (quick 261126-czw, D-01)", () => {
+    const result = brdLookFromBytes(rolledBytes("midlength|asis|hard"), "Rolled.brd");
+    if (!result.ok) throw new Error("the file would not read");
+    const fitted = result.look.bottom!;
+    const nose = fitted.bottom.nose;
+    expect(nose.railRoll!).toBeGreaterThan(0);
+    const flatLook = { ...result.look, bottom: { ...fitted, bottom: { ...fitted.bottom, nose: { ...nose, depth: mm(0) } } } };
+    expect(flatLook.bottom.bottom.nose.railRoll).toBe(nose.railRoll);
+    const w = BRD_FIT_COPY.bottomSliderWords;
+    const acrossOf = (look: typeof result.look, system: (typeof UNITS_SYSTEMS)[number]) => {
+      const sheet = brdFitSheet(look, "Rolled.brd", system);
+      if (!sheet.bottom.read) throw new Error("the bottom was not read");
+      return sheet.bottom.rows.find((row) => row.key === "across")!.cells[0];
+    };
+    for (const system of UNITS_SYSTEMS) {
+      expect(acrossOf(flatLook, system)).toBe(`${w.offRail} ${formatMark(nose.offRail, system)}`);
+      expect(acrossOf(result.look, system)).toBe(`${w.offRail} ${formatMark(nose.offRail, system)} · ${w.railRoll} ${formatBottomDepth(nose.railRoll!, system)}`);
+    }
+  });
 });

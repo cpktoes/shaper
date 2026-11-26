@@ -22,7 +22,7 @@ import { formatBottomStation } from "../geometry/blank-reasons";
 import {
   DEFAULT_BOTTOM,
   cutKind,
-  railRollOf,
+  railRollInUse,
   resolveBottom,
   resolveCut,
   stationFromNearestTip,
@@ -1075,7 +1075,7 @@ export function brdBottomFrames(rows: readonly BrdBottomRow[], height: SectionHe
 const cutWords = (spec: BottomCutSpec, system: UnitsSystem): string =>
   cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatBottomDepth(spec.depth, system)}`;
 
-/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), then a nose concave's Rail Roll when it has one (quick 261125-mf8, read as a depth is), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
+/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), then a nose concave's Rail Roll when it has one and its Depth above 0 (quick 261125-mf8, read as a depth is; quick 261126-czw, D-01), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
 function acrossWords(key: BottomSectionKey, spec: BottomCutSpec, system: UnitsSystem): string {
   const w = BRD_FIT_COPY.bottomSliderWords;
   const kind = cutKind(spec.name);
@@ -1086,7 +1086,7 @@ function acrossWords(key: BottomSectionKey, spec: BottomCutSpec, system: UnitsSy
     return parts.join(" · ");
   }
   if (kind === "single") {
-    const roll = railRollOf(key, spec);
+    const roll = railRollInUse(key, spec);
     return roll > 0 ? `${mark(w.offRail, spec.offRail)} · ${w.railRoll} ${formatBottomDepth(roll, system)}` : mark(w.offRail, spec.offRail);
   }
   if (spec.name === "Tri-Plane Hull Center") return mark(w.offStringer, spec.offStringer);
