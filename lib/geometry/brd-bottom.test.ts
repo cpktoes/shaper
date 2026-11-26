@@ -18,6 +18,7 @@ import {
   BOTTOM_MARK_RANGES_IN,
   BOTTOM_MARK_STEP_IN,
   DEFAULT_BOTTOM,
+  FLAT_CUT_NAMES,
   cutKind,
   keepStationsInOrder,
   resolveBottom,
@@ -36,6 +37,10 @@ import {
   BRD_BOTTOM_ACROSS_STEPS,
   BRD_BOTTOM_BELLY_SHARE,
   BRD_BOTTOM_BLEND_MAX_IN,
+  BRD_BOTTOM_CONCAVE_TIE_MM,
+  BRD_BOTTOM_DISH_MM,
+  BRD_BOTTOM_DISH_OUT,
+  BRD_BOTTOM_DISH_TURN_MM,
   BRD_BOTTOM_FLAT_MM,
   BRD_BOTTOM_TRI_PLANE_MM,
   BRD_BOTTOM_EXTRA_CUT_MM,
@@ -46,8 +51,10 @@ import {
   brdBottomScorer,
   brdBottomSections,
   brdFittedBottomBoard,
+  brdNoseDish,
   brdStringerLift,
   chooseBrdBottom,
+  chooseBrdNoseRetry,
   fitBottomToBrd,
   measureBrdBottom,
   polishBrdBottom,
@@ -926,11 +933,20 @@ describe("the polish: the chosen bottom's sliders land at any value, names held 
     expect(shown(polished, grid.sections).both).toBeLessThanOrEqual(shown(grid.bottom, grid.sections).both - BRD_BOTTOM_EXTRA_CUT_MM);
   }, LONG);
 
-  it("a 1/16\" Rail Roll, whose grid answer is already under the millimetre gate: no retry, the grid's names and no roll", () => {
+  // Rewritten by quick 261125-v2f (D-01's idea 3, told to the founder before the build): this case used to pin the leftover
+  // centre belly the grid reads a small roll as. The nose's dish now brings the retry, and the roll takes that belly's place.
+  it("a 1/16\" Rail Roll, whose grid answer is under the millimetre gate: the nose's dish brings the retry, and the roll takes the leftover centre belly's place (quick 261125-v2f)", () => {
     const { grid, polished } = both(rolledFile(1 / 16));
     expect(shown(grid.bottom, grid.sections).largest).toBeLessThan(BRD_BOTTOM_NOSE_RETRY_MM);
-    for (const key of KEYS) expect(polished[key].name).toBe(grid.bottom[key].name);
-    expect(noRollKey(polished)).toBe(true);
+    // The grid answer: the nose concave over a leftover centre cut, no roll.
+    expect(cutKind(grid.bottom.center.name)).not.toBe("flat");
+    expect(noRollKey(grid.bottom)).toBe(true);
+    // Polished: the grid's own nose name with about the written roll, and nothing in the centre or the tail.
+    expect(polished.nose.name).toBe(grid.bottom.nose.name);
+    expect(Math.abs((polished.nose.railRoll ?? 0) - I(1 / 16))).toBeLessThan(I(1 / 32));
+    expect(cutKind(polished.center.name)).toBe("flat");
+    expect(cutKind(polished.tail.name)).toBe("flat");
+    expect(shown(polished, grid.sections).largest).toBeLessThan(shown(grid.bottom, grid.sections).largest);
   }, LONG);
 
   it("the roll is never in the name choice: the grid answer carries no Rail Roll on any of the three files", () => {
@@ -946,5 +962,125 @@ describe("the polish: the chosen bottom's sliders land at any value, names held 
       expect(source, file).not.toMatch(/process\.env/);
       expect(source, file).not.toMatch(/SPIKE|edgeRoll|acrossShape|spikeSec/);
     }
+  });
+});
+
+describe("the shape across the nose: a dish that turns up again before the rail (quick 261125-v2f, D-01)", () => {
+  const I = inchesToMm;
+  const board = SHORT.board;
+
+  /** Sections exactly `bottom`'s at 40 stations (the polish describe's own helper, copied so that one stays as it is). */
+  function exact(bottom: BoardBottom): BrdSectionLine[] {
+    const resolved = resolveBottom(bottom, board);
+    return Array.from({ length: 40 }, (_, k) => 0.03 + (0.94 * k) / 39).map((share) => {
+      const station = mm(share * board.length);
+      const reach = board.railAt(station) / BRD_BOTTOM_WINDOW;
+      const at0 = sectionsFoamOff(resolved, board, station, mm(0));
+      const run = Array.from({ length: 61 }, (_, k): P2 => {
+        const x = (reach * k) / 60;
+        return [x, sectionsFoamOff(resolved, board, station, mm(x)) - at0];
+      });
+      return { station, points: [...run, [reach, run[60][1] + 20], [0, run[60][1] + 40]] };
+    });
+  }
+  const dishOf = (bottom: BoardBottom) => brdNoseDish(brdBottomSections(exact(bottom), board.length), board);
+  const nose = (name: BottomCutName, depthIn: number, rollIn?: number): BoardBottom =>
+    withCuts({ nose: { ...startingCut("nose", name, board), depth: I(depthIn), ...(rollIn ? { railRoll: I(rollIn) } : {}) } });
+
+  it.each([[1 / 16], [1 / 8], [1 / 4]])("a Blended Nose Concave 3/16\" with a %s\" Rail Roll shows the dish, and its seed gives back the written depth and roll", (rollIn) => {
+    const dish = dishOf(nose("Blended Nose Concave", 3 / 16, rollIn));
+    expect(dish).not.toBeNull();
+    expect(dish!.station).toBeGreaterThanOrEqual(board.length / 2);
+    expect(dish!.dish).toBeGreaterThanOrEqual(BRD_BOTTOM_DISH_MM);
+    expect(dish!.turn).toBeGreaterThanOrEqual(BRD_BOTTOM_DISH_TURN_MM);
+    expect(dish!.out).toBeGreaterThanOrEqual(BRD_BOTTOM_DISH_OUT);
+    expect(dish!.out).toBeLessThan(1);
+    expect(Math.abs(dish!.railRoll - I(rollIn))).toBeLessThan(I(1 / 64));
+    expect(Math.abs(dish!.depth - I(3 / 16))).toBeLessThan(I(1 / 64));
+    expect(dish!.offRail).toBeGreaterThanOrEqual(I(BOTTOM_MARK_RANGES_IN.offRail.min));
+    expect(dish!.offRail).toBeLessThanOrEqual(I(BOTTOM_MARK_RANGES_IN.offRail.max));
+  }, LONG);
+
+  it.each([
+    ["a Blended Nose Concave 3/16\" with no roll", nose("Blended Nose Concave", 3 / 16)],
+    ["a Teardrop Nose Concave 1/4\" with no roll", nose("Teardrop Nose Concave", 1 / 4)],
+    ["a Rolled Belly Entry 1/8\"", nose("Rolled Belly Entry", 1 / 8)],
+    ["a Reverse Vee Nose 1/8\"", nose("Reverse Vee Nose", 1 / 8)],
+    ["a centre Continuous Belly 1/8\"", withCuts({ center: { ...startingCut("center", "Continuous Belly / Rolled Mid", board), depth: I(1 / 8) } })],
+    ["three flat cuts", DEFAULT_BOTTOM],
+  ] as const)("%s shows no dish that turns up", (_name, bottom) => {
+    expect(dishOf(bottom)).toBeNull();
+  }, LONG);
+
+  it("no trial switch from spike 007 was ported: the fit holds none of its scaffolding", () => {
+    const source = readFileSync(join(process.cwd(), "lib/geometry/brd-bottom.ts"), "utf8");
+    expect(source).not.toMatch(/S7_|__s7|globalThis/);
+  });
+});
+
+describe("the nose retry's choice, with the founder's tie in numbers (quick 261125-v2f, D-03)", () => {
+  const I = inchesToMm;
+  const board = SHORT.board;
+  const cut = (key: BottomSectionKey, name: BottomCutName, rollIn?: number): BottomCutSpec =>
+    cutKind(name) === "flat"
+      ? startingCut(key, name, board)
+      : { ...startingCut(key, name, board), depth: I(1 / 8), ...(rollIn ? { railRoll: I(rollIn) } : {}) };
+  const flat = (key: BottomSectionKey) => cut(key, FLAT_CUT_NAMES[key]);
+  const at = (nose: BottomCutSpec, center: BottomCutSpec, shown: number) => ({ specs: { nose, center, tail: flat("tail") }, shown });
+  // Today's shown figure, any value well clear of the bars below.
+  const T = 4 * BRD_BOTTOM_EXTRA_CUT_MM;
+  const TIE = BRD_BOTTOM_CONCAVE_TIE_MM;
+  const EXTRA = BRD_BOTTOM_EXTRA_CUT_MM;
+  const rolled = cut("nose", "Blended Nose Concave", 1 / 8);
+
+  it("today a Rolled Belly Entry: a Blended Nose Concave with a Rail Roll and the same cuts wins a little further off, inside the tie", () => {
+    const today = at(cut("nose", "Rolled Belly Entry"), flat("center"), T);
+    const near = at(rolled, flat("center"), T + 0.8 * TIE);
+    const far = at(rolled, flat("center"), T + 1.2 * TIE);
+    expect(chooseBrdNoseRetry(today, [near])).toBe(near);
+    expect(chooseBrdNoseRetry(today, [far])).toBe(today);
+  });
+
+  it("the same concave with no Rail Roll takes no tie: it must be the 0.25 mm a renamed nose earns closer", () => {
+    const today = at(cut("nose", "Rolled Belly Entry"), flat("center"), T);
+    const short = at(cut("nose", "Blended Nose Concave"), flat("center"), T - 0.96 * EXTRA);
+    const enough = at(cut("nose", "Blended Nose Concave"), flat("center"), T - 1.04 * EXTRA);
+    expect(chooseBrdNoseRetry(today, [short])).toBe(today);
+    expect(chooseBrdNoseRetry(today, [enough])).toBe(enough);
+  });
+
+  it("today a Blended Nose Concave over a Continuous Belly: the rolled concave over a flat centre (a cut fewer) wins up to 0.25 mm further off", () => {
+    const today = at(cut("nose", "Blended Nose Concave"), cut("center", "Continuous Belly / Rolled Mid"), T);
+    const inside = at(rolled, flat("center"), T + 0.96 * EXTRA);
+    const outside = at(rolled, flat("center"), T + 1.04 * EXTRA);
+    expect(chooseBrdNoseRetry(today, [inside])).toBe(inside);
+    expect(chooseBrdNoseRetry(today, [outside])).toBe(today);
+  });
+
+  it("today a Flat Entry over a Continuous Belly: the rolled concave over that belly (a cut more) must be 0.25 mm closer", () => {
+    const belly = cut("center", "Continuous Belly / Rolled Mid");
+    const today = at(flat("nose"), belly, T);
+    const short = at(rolled, belly, T - 0.96 * EXTRA);
+    const enough = at(rolled, belly, T - 1.04 * EXTRA);
+    expect(chooseBrdNoseRetry(today, [short])).toBe(today);
+    expect(chooseBrdNoseRetry(today, [enough])).toBe(enough);
+  });
+
+  it("the same nose name and the same cuts win at any gain over rounding noise, and lose at none", () => {
+    const today = at(cut("nose", "Blended Nose Concave"), flat("center"), T);
+    const gain = at(rolled, flat("center"), T - I(1 / 64) / 1000);
+    const none = at(rolled, flat("center"), T);
+    expect(chooseBrdNoseRetry(today, [gain])).toBe(gain);
+    expect(chooseBrdNoseRetry(today, [none])).toBe(today);
+  });
+
+  it("no passing try keeps today itself, and of two passing tries within 0.25 mm the one with fewer cuts wins", () => {
+    const belly = cut("center", "Continuous Belly / Rolled Mid");
+    const today = at(cut("nose", "Blended Nose Concave"), belly, T);
+    expect(chooseBrdNoseRetry(today, [])).toBe(today);
+    expect(chooseBrdNoseRetry(today, [at(rolled, belly, T + EXTRA)])).toBe(today);
+    const closer = at(rolled, belly, T - 0.5 * EXTRA);
+    const fewer = at(rolled, flat("center"), T - 0.2 * EXTRA);
+    expect(chooseBrdNoseRetry(today, [closer, fewer])).toBe(fewer);
   });
 });
