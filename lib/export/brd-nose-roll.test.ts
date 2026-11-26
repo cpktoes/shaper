@@ -65,4 +65,56 @@ describe("brdLookFromBytes on a board with a rolled nose concave and no other cu
   it("the Mid-length with a Blended Nose Concave 3/16\" and a 1/8\" Rail Roll opens with a nose concave, about that roll, and a flat centre", () => {
     expectRollBack(noseRollBytes("midlength|asis|hard", "Blended Nose Concave", 3 / 16, 1 / 8), 3 / 16, 1 / 8);
   });
+
+  // Each of these opened on the code before this task with no roll, or with a leftover centre cut standing in for it (measured
+  // at plan time). The name that comes back is not asserted: a Slight with a 1/4" roll comes back named Blended (D-05).
+  it.each([
+    ["the Fish, Blended Nose Concave 1/8\", Rail Roll 1/16\"", "fish|asis|hard", "Blended Nose Concave", 1 / 8, 1 / 16],
+    ["the Mid-length, Teardrop Nose Concave 1/8\", Rail Roll 1/8\"", "midlength|asis|hard", "Teardrop Nose Concave", 1 / 8, 1 / 8],
+    ["the Mid-length, Slight Single Concave Entry 3/16\", Rail Roll 1/8\"", "midlength|asis|hard", "Slight Single Concave Entry", 3 / 16, 1 / 8],
+    ["the Mid-length, Slight Single Concave Entry 3/16\", Rail Roll 1/4\"", "midlength|asis|hard", "Slight Single Concave Entry", 3 / 16, 1 / 4],
+    ["the Mid-length, Blended Nose Concave 1/4\", Rail Roll 1/4\"", "midlength|asis|hard", "Blended Nose Concave", 1 / 4, 1 / 4],
+    // The founder's tie (D-03, "concave in the nose is super common and should win"): as a nose concave this board is closer
+    // than the Rolled Belly Entry it opened as, but by less than the 0.25 mm a renamed nose must earn; the tie lets it win.
+    ["the Fish, Slight Single Concave Entry 1/16\", Rail Roll 1/8\" (the founder's tie)", "fish|asis|hard", "Slight Single Concave Entry", 1 / 16, 1 / 8],
+  ] as const)("%s opens as a nose concave with about that roll and depth, and nothing in the centre or tail", (_name, label, nose, depthIn, rollIn) => {
+    expectRollBack(noseRollBytes(label, nose, depthIn, rollIn), depthIn, rollIn);
+  });
+});
+
+describe("brdLookFromBytes on boards with a real belly or a concave with no roll: nothing invented (quick 261125-v2f, D-06)", () => {
+  const KEYS = ["nose", "center", "tail"] as const;
+  const open = (bytes: Uint8Array) => {
+    const result = brdLookFromBytes(bytes, "Control.brd");
+    if (!result.ok) throw new Error("the file would not read");
+    return result.look.bottom!.bottom;
+  };
+  const noRoll = (fitted: BoardBottom) => {
+    for (const key of KEYS) expect(fitted[key].railRoll ?? 0, key).toBe(0);
+  };
+
+  it("the Mid-length with a centre Continuous Belly 1/8\" alone comes back with that belly, no nose concave and no roll", () => {
+    const fitted = open(noseRollBytes("midlength|asis|hard", "Flat Entry", 0, 0, { name: "Continuous Belly / Rolled Mid", depthIn: 1 / 8 }));
+    expect(fitted.center.name).toBe("Continuous Belly / Rolled Mid");
+    expect(cutKind(fitted.nose.name)).not.toBe("single");
+    noRoll(fitted);
+  });
+
+  it("the Mid-length with a Rolled Belly Entry 1/8\" comes back as that belly, with no roll", () => {
+    const fitted = open(noseRollBytes("midlength|asis|hard", "Rolled Belly Entry", 1 / 8, 0));
+    expect(fitted.nose.name).toBe("Rolled Belly Entry");
+    noRoll(fitted);
+  });
+
+  it.each([
+    ["the Shortboard", "shortboard|asis|hard"],
+    ["the Mid-length", "midlength|asis|hard"],
+    ["the Fish", "fish|asis|hard"],
+  ] as const)("%s with a Blended Nose Concave 3/16\" and no roll comes back as a nose concave with no roll, the centre and tail flat", (_name, label) => {
+    const fitted = open(noseRollBytes(label, "Blended Nose Concave", 3 / 16, 0));
+    expect(cutKind(fitted.nose.name)).toBe("single");
+    noRoll(fitted);
+    expect(cutKind(fitted.center.name)).toBe("flat");
+    expect(cutKind(fitted.tail.name)).toBe("flat");
+  });
 });
