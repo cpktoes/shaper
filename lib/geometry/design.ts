@@ -347,8 +347,9 @@ export function railStringerDistances(geometry: OutlineGeometry, anchors: RailAn
 
 /**
  * RAILS' rail lift at a station (Phase 17, D-22, D-35): the foam the vee or belly takes off right at the rail,
- * `sectionsFoamOff` read at the rail's own distance from the stringer (`railAt`). A vee or a belly lifts the rail; a
- * concave runs out before the rail and lifts nothing there. A channel never counts, even one that runs out through the
+ * `sectionsFoamOff` read at the rail's own distance from the stringer (`railAt`). A vee or a belly lifts the rail, and so
+ * does a nose concave's Rail Roll (quick 261125-mf8); a concave alone runs out before the rail and lifts nothing there.
+ * A channel never counts, even one that runs out through the
  * rail (D-43): channels are cut after the rail is shaped (G-17-6, the founder, 2026-11-10), so the rail RAILS bands is
  * the one the vee or belly leaves.
  */
@@ -359,7 +360,8 @@ export function bottomRailLift(resolved: ResolvedBottom, board: BottomBoard): (s
 /**
  * RAILS bands the rail the bottom leaves (Phase 17, D-22, D-35, D-40, D-41 — the founder: "contour before rail
  * shaping"). Each of the three anchors' `boardThickness` is lowered by the rail lift at its station (`liftAt`, built
- * by `bottomRailLift`), so RAILS' plots, DATA and its readout card show the thinner rail a vee or a belly leaves.
+ * by `bottomRailLift`), so RAILS' plots, DATA and its readout card show the thinner rail a vee or a belly leaves, or
+ * a nose concave's Rail Roll (quick 261125-mf8).
  * When the lift is 0 at all three — a flat bottom, a concave alone — `rails` itself comes back, the same object, so a
  * flat board's every RAILS figure is untouched. A flat tail with channels keeps its rails too: a channel is cut after
  * the rail is shaped and never lifts it (the founder, 2026-11-11).
@@ -392,11 +394,12 @@ export function railsOnTheBottom(
  * draw it"). Each section stands on the bottom the vees, bellies and concaves leave at its anchor — `sectionsFoamOff`,
  * the one number without the channels (D-05) — read every 1/8" in from the rail (`railSectionBottom`):
  *
- * - Under a vee or a belly the rail is lifted and thinned (D-41's first half, D-22, D-35): the plot draws the planed
+ * - Under a vee or a belly, or a nose concave's Rail Roll (quick 261125-mf8), the rail is lifted and thinned (D-41's
+ *   first half, D-22, D-35): the plot draws the planed
  *   bottom falling away under the rail at the cut's own angle, and `bands` are the bands of `railsOnTheBottom`'s
  *   rails, so the rail drawn on it is the thinner one.
- * - Under a concave the bottom hollows up toward the stringer, and the rail is not thinned: a concave runs out to
- *   nothing at its edge, so it lifts nothing at the rail (`bottomRailLift` reads 0 there) and RAILS bands, reads out and
+ * - Under a concave alone (no Rail Roll) the bottom hollows up toward the stringer, and the rail is not thinned: a
+ *   concave runs out to nothing at its edge, so it lifts nothing at the rail (`bottomRailLift` reads 0 there) and RAILS bands, reads out and
  *   lists the very rail it does on a flat bottom. A centre card's concave that still runs at the tail section is drawn
  *   there too, because it is the bottom that section stands on.
  * - The channels are cut last, after the rail is shaped (G-17-6, the founder, 2026-11-10: D-05, D-10), into either:
@@ -431,7 +434,7 @@ export function railBandsOnTheBottom(
     const cutIn = (inFromRail: Mm) => channelFoamOff(channels, board, wingRule, station, mm(Math.abs(rail - inFromRail)));
     const wallsIn = walls.flatMap((w) => [mm(rail - w), mm(rail + w)]);
     if (lift === 0) {
-      // No vee or belly lifts this rail: the bottom a concave leaves (flat where there is none), the channels cut last
+      // No vee, belly or Rail Roll lifts this rail: the bottom a concave leaves (flat where there is none), the channels cut last
       // into it (the founder, 2026-11-11: "Show channels too", "Always draw it").
       const bottom = railSectionBottom(bands[key], mm(0), liftIn, walls.length > 0 ? { cutIn, wallsIn } : undefined);
       return bottom.channelCut || bottom.across.some((p) => p.y !== 0) ? { ...bands[key], bottom } : bands[key];

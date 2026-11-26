@@ -102,7 +102,9 @@ function cutLine(section: BottomSectionKey, cut: ResolvedCut, board: BottomBoard
   const where = stationWords(section, cut, board, system);
   if (cut.kind === "single") {
     const point = cut.closesToPoint ? ", closes to a point" : "";
-    return `${head} ${depth}, ${where}; ${formatMark(cut.offRail, system)} off the rail${point}.`;
+    // A nose concave's Rail Roll (quick 261125-mf8, D-07), named only when it is there: a height, read as a depth is.
+    const roll = cut.railRoll > 0 ? `, ${formatBottomDepth(cut.railRoll, system)} rail roll` : "";
+    return `${head} ${depth}, ${where}; ${formatMark(cut.offRail, system)} off the rail${roll}${point}.`;
   }
   if (cut.kind === "double") {
     const lift = cut.spiral ? ` with ${formatMarkOrLess(cut.veeLift, system)} vee lift` : "";

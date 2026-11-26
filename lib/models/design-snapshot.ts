@@ -175,6 +175,13 @@
  *    that is not a number, not finite, or outside 0° to the slider's far end reads as `null` too — that ONE
  *    key, never the channels. The key is always there once read, so a bottom that is the opening one still
  *    compares equal to it and still leaves no key.
+ *    A nose concave's `railRoll` (the founder, 2026-11-25, quick 261125-mf8: the Rail Roll on the Teardrop Nose
+ *    Concave, the Blended Nose Concave and the Slight Single Concave Entry) is optional and forgiving on its own, in the
+ *    trough rule's words: absent reads 0, so every board saved before it opens with no key and saves again the same
+ *    way. A roll that is not a number, below 0, past the depth family's outer bound (1"), or on any cut that is not one
+ *    of the three nose concaves leaves no key at all and keeps the cut and the rest of the board; a roll of 0 leaves no
+ *    key either. The version stays 5, for rule 6's reason: the reader on `main` drops the unknown key, so a board saved
+ *    here opens there with its nose unrolled. No database change.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -198,7 +205,9 @@ import {
   CHANNEL_ANGLE_MAX,
   DEFAULT_BOTTOM,
   isDefaultBottom,
+  railRollOf,
   type BoardBottom,
+  type BottomCutName,
   type BottomSectionKey,
 } from "@/lib/geometry/bottom";
 import {
@@ -581,6 +590,9 @@ const bottomCutSchema = (section: BottomSectionKey) =>
       // Trough At, and the cut and its rule are kept.
       troughStart: bottomAcrossSchema.optional().catch(undefined),
       troughEnd: bottomAcrossSchema.optional().catch(undefined),
+      // A nose concave's Rail Roll (quick 261125-mf8), a height of the depth family: forgiving on its own, so a bad roll
+      // never costs a board its cut.
+      railRoll: bottomDepthSchema.optional().catch(undefined),
     })
     // A rule or an end that was bad (or never there) is left out of the cut altogether, not kept as an empty key: a
     // board that never chose one stores and reads back exactly the keys it always did.
@@ -588,6 +600,8 @@ const bottomCutSchema = (section: BottomSectionKey) =>
       if (cut.troughRun === undefined) delete cut.troughRun;
       if (cut.troughStart === undefined) delete cut.troughStart;
       if (cut.troughEnd === undefined) delete cut.troughEnd;
+      // Kept only on one of the three nose concaves and only above 0: a board that never rolled a nose stores no key.
+      if (railRollOf(section, { name: cut.name as BottomCutName, railRoll: cut.railRoll as Mm | undefined }) <= 0) delete cut.railRoll;
       return cut;
     })
     .catch(() => ({ ...DEFAULT_BOTTOM[section] }));

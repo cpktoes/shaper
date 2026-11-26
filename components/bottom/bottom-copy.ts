@@ -70,6 +70,9 @@ export const BOTTOM_COPY = {
   /** A cut's rows (UI-SPEC § The side panel, slider rows), in D-04's order. */
   offRail: "Off Rail",
   offRailLeft: "At the rail",
+  /** A nose concave's Rail Roll (the founder, 2026-11-25, quick 261125-mf8): the row right after Off Rail. First drafts. */
+  railRoll: "Rail Roll",
+  railRollLeft: "Level to the rail",
   offStringer: "Off Stringer",
   offStringerLeft: "At the stringer",
   troughAt: "Trough At",
@@ -270,14 +273,18 @@ export function dataFloorNote(
   cutName: string,
   board: Pick<BottomBoard, "length">,
   system: UnitsSystem,
+  rolled = false,
 ): string | null {
-  const sentence = floorWarning(flag, board, system);
+  const sentence = floorWarning(flag, board, system, rolled);
   if (sentence === null || !flag) return null;
   return flag.section === "channels" ? sentence : `${cutName}: ${sentence}`;
 }
 
 /** The floor's fix, said once after either form (UI-SPEC § Warnings and edge copy). */
 const FLOOR_FIX = "Lower the Depth, or move the cut away from the tip.";
+/** The fix when the rail form holds on a nose concave carrying a Rail Roll (quick 261125-mf8): the roll is what thins the
+ * rail there, so lowering the Depth alone would not help. A first draft, the founder's to change. */
+const FLOOR_FIX_ROLL = "Lower the Depth or the Rail Roll, or move the cut away from the tip.";
 
 /**
  * The floor in words (D-09, D-33 as amended by D-40) — the sentence under a cut's (or the channels') Depth row, from that
@@ -292,8 +299,11 @@ const FLOOR_FIX = "Lower the Depth, or move the cut away from the tip.";
  *
  * Then the fix, once. The floor is `BOTTOM_FLOOR` (the app's 1/4", `FOIL_THICKNESS_RANGE_IN.min`) as a mark — `6 mm` in
  * Metric — and the station a dim through `formatBottomStation` (CLAUDE.md Rule 2). Words the founder may rewrite.
+ *
+ * `rolled` says the cut carries a Rail Roll (quick 261125-mf8): when it does and the rail form holds, the fix names the
+ * roll too. Left out, the sentence is exactly today's.
  */
-export function floorWarning(flag: BottomFloorFlag | undefined, board: Pick<BottomBoard, "length">, system: UnitsSystem): string | null {
+export function floorWarning(flag: BottomFloorFlag | undefined, board: Pick<BottomBoard, "length">, system: UnitsSystem, rolled = false): string | null {
   if (!flag || (flag.stringer.length === 0 && flag.rails.length === 0)) return null;
   const floor = formatMark(BOTTOM_FLOOR, system);
   const fromNose = flag.section === "nose";
@@ -308,7 +318,7 @@ export function floorWarning(flag: BottomFloorFlag | undefined, board: Pick<Bott
     const who = flag.section === "channels" ? "The channels leave" : "This cut leaves";
     parts.push(`${who} the rail under ${floor} near the ${tip}: the rail is thinner there than the floor.`);
   }
-  return [...parts, FLOOR_FIX].join(" ");
+  return [...parts, rolled && flag.rails.length > 0 ? FLOOR_FIX_ROLL : FLOOR_FIX].join(" ");
 }
 
 /* ============ the CHANNELS block, inside TAIL (D-10, D-11; UI-SPEC § The channels block) ============ */

@@ -13,6 +13,13 @@
  * own executed figures in `__fixtures__/bottom-golden.json`. Each function keeps the sketch's operations in its order
  * so the two agree to 1e-9 mm.
  *
+ * One cut number is not in sketch 021: a nose concave's **Rail Roll** (the founder, 2026-11-25, quick 261125-mf8; spike
+ * 005's Edge Roll, renamed). Above 0 the bottom outside the concave's edge curves up to the rail by that much at the rail,
+ * full from the nose tip back to Deepest At and gone by End: a lift, like a vee's or a belly's. It is optional on the
+ * stored cut and absent reads 0, where its branch is skipped, so every saved board, every preset and the golden run the
+ * sketch's arithmetic to the last bit; its own tests (`bottom-rail-roll.test.ts`) work every expected value out with the
+ * functions here, since the sketch has no figure for it.
+ *
  * What is STORED (`BoardBottom`, D-24) and what is READ (`ResolvedBottom`) differ in one way: where a station is
  * measured from. A Nose cut's Start, Deepest At and End are stored as distances from the nose (D-39), a Center or Tail
  * cut's from the tail (D-07), and a Tail cut's Deepest At as a signed distance from the front fins, + toward the nose
@@ -92,6 +99,12 @@ export interface BottomCutSpec {
   troughStart?: Mm;
   /** By hand: the trough's distance off the stringer at the cut's End (a mark). Absent reads Trough At (D-06). */
   troughEnd?: Mm;
+  /**
+   * A nose concave's Rail Roll (the founder, 2026-11-25, quick 261125-mf8): how far the bottom outside the concave's edge
+   * curves up at the rail, a height of the depth family, in millimetres. Absent reads 0, and it is read only on the three
+   * nose concaves (`takesRailRoll`); a cut that has none, or whose roll went back to 0, stores no key (`tidyRailRoll`).
+   */
+  railRoll?: Mm;
 }
 
 /**
@@ -196,7 +209,8 @@ export const BOTTOM_FLOOR: Mm = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
  * The mark sliders' step and ranges on BOTTOM (D-06, UI-SPEC §1), in inches: 1/16" steps (1 mm in Metric, through
  * `measureSlider`) across the board, the Depth slider 0 to 1/2" (in finer steps since quick 261116-tqs, below), Off Rail 0 to
  * 6", Off Stringer 0 to 9", Trough At 1/2" to 8", Vee Lift 0 to 1/2". The stations step 1/2" (10 mm in Metric) along the board
- * (D-10). They live here so the page's sliders and the .brd fit read one set of numbers (quick 261113-gwr).
+ * (D-10). They live here so the page's sliders and the .brd fit read one set of numbers (quick 261113-gwr). A nose concave's
+ * Rail Roll (quick 261125-mf8) is a height like a Depth: it runs 0 to 1/2" and steps and reads as a Depth does.
  */
 export const BOTTOM_MARK_STEP_IN = 1 / 16;
 /**
@@ -214,6 +228,7 @@ export const BOTTOM_MARK_RANGES_IN = {
   troughAt: { min: 0.5, max: 8 },
   depth: BOTTOM_DEPTH_RANGE_IN,
   veeLift: { min: 0, max: 0.5 },
+  railRoll: BOTTOM_DEPTH_RANGE_IN,
 } as const;
 
 /* ============ the starting numbers (D-08) ============ */
@@ -394,6 +409,8 @@ export interface ResolvedCut {
   troughStart: Mm;
   /** By hand: the trough's distance off the stringer at End — Trough At when none is stored (D-06). */
   troughEnd: Mm;
+  /** A nose concave's Rail Roll (quick 261125-mf8): the stored one through `railRollOf`, 0 on every other cut. */
+  railRoll: Mm;
 }
 
 /**
@@ -436,7 +453,7 @@ export interface ResolvedBottom {
  */
 export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board: BottomBoard): ResolvedCut {
   const kind = cutKind(spec.name);
-  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false, troughRun: "parallel", troughStart: mm(0), troughEnd: mm(0) };
+  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false, troughRun: "parallel", troughStart: mm(0), troughEnd: mm(0), railRoll: mm(0) };
   const abs = absoluteStations(section, spec, board);
   const deepest = abs.deepest;
   let { start, end } = abs;
@@ -462,7 +479,35 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
     troughRun: spec.troughRun ?? "parallel",
     troughStart: spec.troughStart ?? spec.troughAt,
     troughEnd: spec.troughEnd ?? spec.troughAt,
+    railRoll: railRollOf(section, spec),
   };
+}
+
+/**
+ * Which cuts carry a Rail Roll (the founder, 2026-11-25, quick 261125-mf8, D-01): a Nose cut that is a single concave,
+ * which is the Teardrop Nose Concave, the Blended Nose Concave and the Slight Single Concave Entry, and nothing else. The
+ * one rule the maths, BOTTOM's row and the board reader all ask.
+ */
+export function takesRailRoll(section: BottomSectionKey, name: BottomCutName): boolean {
+  return section === "nose" && cutKind(name) === "single";
+}
+
+/** A cut's Rail Roll as the maths reads it: the stored amount when the cut takes one and it is a number above 0, else 0. */
+export function railRollOf(section: BottomSectionKey, spec: Pick<BottomCutSpec, "name" | "railRoll">): Mm {
+  const roll = spec.railRoll;
+  return takesRailRoll(section, spec.name) && typeof roll === "number" && Number.isFinite(roll) && roll > 0 ? roll : mm(0);
+}
+
+/**
+ * The cut with its Rail Roll key left out when it reads 0 (`railRollOf`): back at 0, on a cut that takes none, or not a
+ * number. So a board that never rolled a nose stores exactly the keys it always did. Nothing to tidy hands back the very
+ * same object.
+ */
+export function tidyRailRoll<T extends Pick<BottomCutSpec, "name" | "railRoll">>(section: BottomSectionKey, spec: T): T {
+  if (!("railRoll" in spec) || railRollOf(section, spec) > 0) return spec;
+  const tidy = { ...spec };
+  delete tidy.railRoll;
+  return tidy;
 }
 
 /**
@@ -832,9 +877,43 @@ export function doubleMarks(
 }
 
 /**
+ * The curve of a nose concave's Rail Roll from the concave's edge to the rail (quick 261125-mf8, D-02): the Rolled Vee's
+ * own, at its starting Smoothness of 60. A curved roll, the founder's pick, not a straight chine.
+ */
+export const RAIL_ROLL_SMOOTHNESS = 0.6;
+
+/**
+ * How much of a nose concave's Rail Roll stands at station `s` (from the tail), along the board (D-02): all of it from the
+ * nose tip back to the concave's Deepest At (ahead of its Start too, all the way to the tip), then fading to nothing at
+ * its End, and none behind it.
+ */
+export function railRollAlong(cut: Pick<ResolvedCut, "deepest" | "end">, s: Mm): number {
+  if (s < cut.end) return 0;
+  if (s >= cut.deepest || cut.deepest - cut.end < FADE_GUARD) return 1;
+  return smoothstep((s - cut.end) / (cut.deepest - cut.end));
+}
+
+/**
+ * How much of a nose concave's Rail Roll stands `y` out from the stringer at station `s`, across the board (D-02): none
+ * inside the concave's edge (the reference rail less Off Rail, never below 0; the Teardrop's closing width is never
+ * read), rising along `rise` at `RAIL_ROLL_SMOOTHNESS` to all of it at the rail.
+ */
+export function railRollAcross(cut: Pick<ResolvedCut, "offRail">, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): number {
+  const W = board.railAt(s);
+  const C = Math.max(0, refAt(board, rule, s) - cut.offRail);
+  if (!(W > C) || y <= C) return 0;
+  return rise(Math.min(1, (y - C) / (W - C)), RAIL_ROLL_SMOOTHNESS);
+}
+
+/** The foam a nose concave's Rail Roll lifts at a point: the roll times its two shares, along and across. */
+function railRollLift(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): number {
+  return cut.railRoll * (railRollAlong(cut, s) * railRollAcross(cut, board, rule, s, y));
+}
+
+/**
  * One cut alone, in its two kinds of work (D-40): the foam it hollows out of the middle of the bottom (`concave` — a
- * single, a double) and the foam it lifts off toward the rail (`lift` — a vee, a belly, the Spiral Vee's vee). The
- * sketch's `cutOff` is their sum, in its own order (see `cutFoamOff`).
+ * single, a double) and the foam it lifts off toward the rail (`lift` — a vee, a belly, the Spiral Vee's vee, a nose
+ * concave's Rail Roll). The sketch's `cutOff` is their sum, in its own order (see `cutFoamOff`).
  *
  * - A single concave: `depth × fade × min(1, C / PINCH) × sec(y / C, r)` inside its half-width C — narrower than 3" it
  *   shallows in proportion, so a tip never gets a slot.
@@ -844,6 +923,9 @@ export function doubleMarks(
  * - The Spiral Vee is that double with a Vee Lift under it: `veeLift × fade × rise(y / W, 0)`, nothing at the stringer.
  * - A vee or a belly lifts from Off Stringer (the Tri-Plane's flat panel) out to the rail `railAt(s)`:
  *   `depth × fade × rise((y − F) / (W − F), r)`.
+ * - A nose concave's Rail Roll (quick 261125-mf8) is a lift outside its edge: `railRoll × (along × across)`
+ *   (`railRollAlong`, `railRollAcross`). It holds to the nose tip, so ahead of the concave's Start, where the concave
+ *   itself takes nothing, the roll's lift is all the cut returns. A cut whose Depth is 0 takes nothing, roll included.
  *
  * Nothing where the board has no rail. A cut may run past its own section; whatever it overlaps, it adds to.
  */
@@ -852,7 +934,8 @@ export function cutFoamOffParts(cut: ResolvedCut, board: BottomBoard, rule: Bott
   const W = board.railAt(s);
   if (W <= 0) return none;
   if (cut.kind === "flat" || cut.depth <= 0) return none;
-  const f = fadeAt(cut.start, cut.deepest, cut.end, s, board.length); if (f <= 0) return none;
+  const f = fadeAt(cut.start, cut.deepest, cut.end, s, board.length);
+  if (f <= 0) return cut.kind === "single" && cut.railRoll > 0 ? { concave: 0, lift: railRollLift(cut, board, rule, s, y) } : none;
   const r = cut.smoothness / 100; let concave = 0; let lift = 0;
   if (cut.kind === "single" || cut.kind === "double") {
     const C = cutHalfWidth(cut, board, rule, s);
@@ -868,6 +951,7 @@ export function cutFoamOffParts(cut: ResolvedCut, board: BottomBoard, rule: Bott
       }
     }
     if (cut.spiral && cut.veeLift > 0 && W > 0) lift += cut.veeLift * f * rise(Math.min(1, y / W), 0);
+    if (cut.kind === "single" && cut.railRoll > 0) lift += railRollLift(cut, board, rule, s, y);
   } else { // vee or belly: a lift from the stringer (or the flat panel's edge, Off Stringer) out to the rail
     const F = cut.offStringer; if (y > F && W > F) lift += cut.depth * f * rise((y - F) / (W - F), r);
   }
@@ -890,15 +974,16 @@ export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWin
  * Two kinds of cut, two rules (D-09, D-40):
  * - a concave takes foam from the middle of the bottom, so it is held so that at least 1/4" of foam is left under the
  *   planed thickness (`BOTTOM_FLOOR`) — the floor at the stringer;
- * - a vee or a belly lifts the rails and never touches the stringer (its foam off there is exactly 0). The founder,
+ * - a vee or a belly (and a nose concave's Rail Roll, quick 261125-mf8) lifts the rails and never touches the stringer
+ *   (its foam off there is exactly 0). The founder,
  *   2026-11-08: "Belly and Vee should never take thickness off the stringer. The result is a lifted, thinned rail" and
  *   "no lips should ever be present. The contour should extend to the rail and make it effectively thinner." So a
  *   lift is never clamped: it runs out to the rail whatever the foam is there. Where it would reach the deck, the
  *   section's foam simply ends (`bottomedHalfSection` in volume.ts), and a rail left under 1/4" is flagged, not cut
  *   shallower.
  *
- * A double's flat and troughs are concave work (held); the Spiral Vee's vee and the Tri-Plane's planes are lifts (never
- * held, nothing at the stringer).
+ * A double's flat and troughs are concave work (held); the Spiral Vee's vee, the Tri-Plane's planes and a nose concave's
+ * Rail Roll are lifts (never held, nothing at the stringer).
  *
  * The channels are cut last, into whatever the sections leave (D-05, D-10): their foam off (`channelFoamOff`) is the
  * last term of the sum. Each channel's floor starts at its peak, where it takes nothing — the stringer itself is the
@@ -1327,7 +1412,7 @@ export interface BottomDataRow {
   width: Mm | null;
   /** The deepest cut: the most foam off across the station, the gap under a straightedge laid rail to rail. */
   deepest: Mm;
-  /** The vee's or belly's lift at the rail (`sectionsFoamOff` there) — the figure RAILS thins the rail by
+  /** The vee's or belly's lift at the rail, or a nose concave's Rail Roll (`sectionsFoamOff` there) — the figure RAILS thins the rail by
    * (`bottomRailLift`). A channel is cut after the rail is shaped and never counts here, even one that runs out
    * through the rail (the founder, 2026-11-11: "Match RAILS"; D-05, D-43). */
   railLift: Mm;
@@ -1367,7 +1452,7 @@ function referenceOf(board: BottomBoard, s: Mm): BottomDataRow["reference"] {
 /**
  * DATA's depths table (D-16): a row at the tail, every 6" from it and at the nose tip — the width, the deepest cut,
  * the rail lift and the stringer left. The deepest cut and the stringer left are the one number (`foamOff`), channels
- * included. The rail lift is the vee's or belly's lift at the rail alone (`sectionsFoamOff`), the figure RAILS thins
+ * included. The rail lift is the vee's or belly's lift at the rail alone, or a nose concave's Rail Roll (`sectionsFoamOff`), the figure RAILS thins
  * the rail by: a channel is cut after the rail is shaped and never counts there, even one that runs out through the
  * rail (the founder, 2026-11-11: "Match RAILS").
  */
