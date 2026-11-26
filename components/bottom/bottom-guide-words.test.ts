@@ -182,7 +182,7 @@ describe("the one figure in the words reads in the shaper's own system (the foun
 
 describe("the Rail Roll's shaping line (the founder, 2026-11-25, quick 261125-v2j)", () => {
   // The cards that take a Rail Roll are the maths' own rule, never a list typed here alone.
-  const ROLLING = BOTTOM_CUT_NAMES.nose.filter((name) => takesRailRoll("nose", name));
+  const ROLLING: BottomCutName[] = BOTTOM_CUT_NAMES.nose.filter((name) => takesRailRoll("nose", name));
   const rolls = (card: (typeof BOTTOM_GUIDE_WORDS)[number]) => card.section === "nose" && ROLLING.includes(card.key as BottomCutName);
 
   it("is the founder's line, word for word", () => {

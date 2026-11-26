@@ -134,7 +134,9 @@ function TopView({ layout }: { layout: BottomSheetLayout }) {
   const clipId = useId();
   const cuts = layout.cuts;
 
-  const box = useMemo(() => bottomTopViewBox(board, cuts.length), [board, cuts.length]);
+  // The board's room is the layout's (quick 261125-v2j): the room the fit rule counted, a few dots under the natural
+  // room only on a page whose own parts would otherwise run over the sheet.
+  const box = useMemo(() => bottomTopViewBox(board, cuts.length, layout.topViewRoom), [board, cuts.length, layout.topViewRoom]);
   const frame = useMemo(() => topViewFrame(board, box.boardBoxWidth, box.frameHeight), [board, box]);
   // The board's millimetres to this picture's dots: the screen's own frame, read in dots and set right of the gutter.
   const X = (station: number) => BOTTOM_TOP_VIEW.gutter + topViewX(frame, station) / frame.px;
@@ -187,8 +189,9 @@ function TopView({ layout }: { layout: BottomSheetLayout }) {
       variant="flush"
       bodyClassName="px-1.5 py-1"
     >
-      {/* The page's one part that may give way: if a board ever needs more room than the fit rule counted, this
-          picture draws a little smaller rather than a table losing its last row. */}
+      {/* The page's one part that may give way. The fit rule already draws the board smaller where the page is full
+          (`layout.topViewRoom`); this is only the hairline guard for a line another browser sets differently — the
+          picture draws a dot smaller rather than a note or a table losing its last line. */}
       <div data-bottom-sheet-part="top" className="relative min-h-0 w-full" style={{ aspectRatio: `${BOTTOM_TOP_VIEW.width} / ${box.height}` }}>
         <svg
           data-bottom-sheet-top-view

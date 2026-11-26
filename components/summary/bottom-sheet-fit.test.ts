@@ -7,6 +7,7 @@ import { widePointWidthRangeIn } from "@/lib/geometry/board-size";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_MARK_RANGES_IN,
   BOTTOM_SECTIONS,
   bottomDataRows,
   bottomLayoutMarks,
@@ -415,6 +416,129 @@ describe("the Rail Roll's line on paper (the founder, 2026-11-25, quick 261125-v
   });
 });
 
+/** The board's room in the top view before anything gives way: the picture's own natural room, capped as ever. */
+const naturalRoom = (layout: BottomSheetLayout, board: BottomBoard) => bottomTopViewBox(board, layout.cuts.length).room;
+/** The page's spare room with the picture drawn at this room instead of the layout's. */
+const pageSpareAt = (layout: BottomSheetLayout, board: BottomBoard, room: number) => bottomSheetSpare({ ...layout, topViewRoom: room }, board).page;
+
+/** Every sheet after the page has room, by the rules "every sheet the bottom prints on has room" holds. */
+function expectSheetsAfterThePageFit(layout: BottomSheetLayout, board: BottomBoard, what: string) {
+  const spare = bottomSheetSpare(layout, board);
+  if (layout.tablesSplit) {
+    expect(spare.split!.depths, `${what}: the depths do not fit their own sheet`).toBeGreaterThanOrEqual(0);
+    expect(spare.split!.marks, `${what}: the layout marks do not fit their own sheet`).toBeGreaterThanOrEqual(0);
+  } else if (layout.tablesOnOwnSheet) {
+    expect(spare.tables!, `${what}: the tables do not fit their own sheet`).toBeGreaterThanOrEqual(0);
+    if (layout.notesOnOwnSheet.length > 0) expect(spare.notes!, `${what}: the notes do not fit their own sheet`).toBeGreaterThanOrEqual(0);
+  }
+}
+
+/*
+ * Quick 261125-v2j (D-03): the page's own parts — the picture, the sections and the How to shape notes — can fill a sheet
+ * on their own once the tables have left it, and the founder's longer note did exactly that on the stock Fish with a cut
+ * in every section and 8 channels. The rule now gives that room itself: the bottom from above, the page's one part made
+ * to give way, is drawn the fewest whole dots smaller that make the page fit. Every other page keeps its picture.
+ */
+describe("the picture gives the room a full page lacks, by the rule (quick 261125-v2j, D-03)", () => {
+  it.each(CASES)("$label — a stock board as it opens keeps its picture's whole room, in both systems", (c) => {
+    for (const system of UNITS_SYSTEMS) {
+      const layout = layoutOf(c, system);
+      expect(layout.topViewRoom).toBe(bottomTopViewBox(c.built.board, layout.cuts.length).room);
+    }
+  });
+
+  const longest = (() => {
+    const fields = presetFields("longboard");
+    return build("longest", { ...fields, outline: { ...fields.outline, length: inchesToMm(BOARD_LENGTH_RANGE_IN.max) } });
+  })();
+  const FULLEST: Built[] = [byId("fish"), byId("longboard"), longest];
+  const ROLLS_IN = [1 / 8, BOTTOM_MARK_RANGES_IN.railRoll.max];
+
+  it.each(FULLEST.map((b) => [b.id, b] as const))(
+    "%s — every cut, 8 channels and a Rail Roll on each nose concave: the line prints and every sheet fits, as many sheets as at 0",
+    (_, built) => {
+      for (const nose of ROLLING_NOSES) {
+        const flat = resolveBottom(rolledEvery8(built.board, nose, 0), built.board);
+        for (const rollIn of ROLLS_IN) {
+          const rolled = resolveBottom(rolledEvery8(built.board, nose, inchesToMm(rollIn)), built.board);
+          const sheets: Partial<Record<UnitsSystem, number>> = {};
+          for (const system of UNITS_SYSTEMS) {
+            const what = `${built.id} ${nose} ${rollIn}" ${system}`;
+            const layout = bottomSheetLayout(rolled, built.board, system, built.frontPair);
+            const atZero = bottomSheetLayout(flat, built.board, system, built.frontPair);
+            const noseNote = layout.notes[layout.cuts.findIndex((cut) => cut.key === "nose")];
+            expect(noseNote.how.endsWith(` ${RAIL_ROLL_HOW}`), what).toBe(true);
+            expect(bottomSheetSpare(layout, built.board).page, `${what}: the page's own parts do not fit their sheet`).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+            expectSheetsAfterThePageFit(layout, built.board, what);
+            for (const field of ["sheets", "tablesOnOwnSheet", "tablesSplit", "tableNotes", "notesOnOwnSheet"] as const) {
+              expect(layout[field], `${what}: ${field}`).toEqual(atZero[field]);
+            }
+            sheets[system] = layout.sheets;
+          }
+          expect(sheets.metric, `${built.id} ${nose} ${rollIn}"`).toBe(sheets.imperial);
+        }
+      }
+    },
+  );
+
+  it.each(FULLEST.map((b) => [b.id, b] as const))("%s — at 0 the line is gone and the page is exactly a board's that never rolled", (_, built) => {
+    for (const nose of ROLLING_NOSES) {
+      const flat = resolveBottom(rolledEvery8(built.board, nose, 0), built.board);
+      const never = resolveBottom(bottomOf(built.board, { ...SETS.every8.names, nose }, SETS.every8.count), built.board);
+      expect("railRoll" in rolledEvery8(built.board, nose, 0).nose, nose).toBe(false);
+      for (const system of UNITS_SYSTEMS) {
+        const layout = bottomSheetLayout(flat, built.board, system, built.frontPair);
+        expect(layout.notes.some((note) => note.how.includes(RAIL_ROLL_HOW)), `${nose} ${system}`).toBe(false);
+        expect(layout, `${nose} ${system}`).toEqual(bottomSheetLayout(never, built.board, system, built.frontPair));
+        expect(layout.topViewRoom, `${nose} ${system}`).toBe(naturalRoom(layout, built.board));
+      }
+    }
+  });
+
+  it("the stock Fish with a Rail Roll on its Teardrop gives room — and the most that fits, not a dot less", () => {
+    const { board, frontPair } = byId("fish");
+    const rolled = resolveBottom(rolledEvery8(board, "Teardrop Nose Concave", inchesToMm(1 / 8)), board);
+    for (const system of UNITS_SYSTEMS) {
+      const layout = bottomSheetLayout(rolled, board, system, frontPair);
+      expect(layout.topViewRoom, system).toBeLessThan(naturalRoom(layout, board));
+      expect(pageSpareAt(layout, board, naturalRoom(layout, board)), system).toBeLessThan(BOTTOM_SHEET_SPARE);
+      expect(bottomSheetSpare(layout, board).page, system).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      expect(pageSpareAt(layout, board, layout.topViewRoom + 1), system).toBeLessThan(BOTTOM_SHEET_SPARE);
+    }
+  });
+
+  it("the four shapes at every length and width the sweep names, every cut and 8 channels, the roll at the slider's top: every page fits, never a sheet fewer", () => {
+    const LENGTHS_IN = [...Array.from({ length: 15 }, (_, k) => 48 + 6 * k), 137, 138, 138 + 1 / 16, 141, 144];
+    let swept = 0;
+    let gave = 0;
+    for (const preset of BOARD_PRESETS) {
+      const fields = presetFields(preset.id);
+      for (const lengthIn of LENGTHS_IN) {
+        const range = widePointWidthRangeIn(inchesToMm(lengthIn));
+        const stock = Math.min(range.max, Math.max(range.min, +mmToInches(fields.outline.widePointWidth).toFixed(4)));
+        for (const widthIn of [...new Set([range.min, stock, range.max])]) {
+          const built = build("rolled", { ...fields, outline: { ...fields.outline, length: inchesToMm(lengthIn), widePointWidth: inchesToMm(widthIn) } });
+          for (const nose of ROLLING_NOSES) {
+            const rolled = resolveBottom(rolledEvery8(built.board, nose, inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max)), built.board);
+            const flat = resolveBottom(rolledEvery8(built.board, nose, 0), built.board);
+            for (const system of UNITS_SYSTEMS) {
+              const what = `${preset.id} ${lengthIn}" x ${widthIn}" ${nose} ${system}`;
+              const layout = bottomSheetLayout(rolled, built.board, system, built.frontPair);
+              swept++;
+              if (layout.topViewRoom < naturalRoom(layout, built.board)) gave++;
+              expect(bottomSheetSpare(layout, built.board).page, what).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+              expect(layout.notes[layout.cuts.findIndex((cut) => cut.key === "nose")].how.endsWith(` ${RAIL_ROLL_HOW}`), what).toBe(true);
+              expect(layout.sheets, what).toBeGreaterThanOrEqual(bottomSheetLayout(flat, built.board, system, built.frontPair).sheets);
+            }
+          }
+        }
+      }
+    }
+    expect(swept, "layouts swept (non-vacuity)").toBeGreaterThan(1000);
+    expect(gave, "some of them give the picture's room (non-vacuity)").toBeGreaterThan(0);
+  }, 60_000);
+});
+
 /*
  * The founder's answer of 2026-11-11, "Make it fit": DATA's note took his longer sentence, and on the 9'+ Longboard the
  * tables' own sheet then had no room for its other notes (with channels it already printed only the first). Now every
@@ -697,6 +821,26 @@ describe("the split's reach: no board up to 11'6\" ever splits, and every marked
     expect(own, "layouts whose tables take their own sheet (non-vacuity)").toBeGreaterThan(0);
     expect(splits, "and some of them split (non-vacuity)").toBeGreaterThan(0);
   });
+
+  it("no page runs over its sheet: the picture gives room only where the page at its whole room would, and then the most that fits (quick 261125-v2j)", () => {
+    let gave = 0;
+    for (const { what, layout, board } of [...fitting, ...over]) {
+      if (layout.cuts.length === 0) continue;
+      const natural = naturalRoom(layout, board);
+      expect(bottomSheetSpare(layout, board).page, `${what}: the page's own parts do not fit their sheet`).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      expect(layout.topViewRoom, what).toBeLessThanOrEqual(natural);
+      const wholeRoom = pageSpareAt(layout, board, natural);
+      if (layout.topViewRoom < natural) {
+        gave++;
+        expect(wholeRoom, `${what}: gave room although the page fitted at its whole room`).toBeLessThan(BOTTOM_SHEET_SPARE);
+        expect(layout.tablesOnOwnSheet, what).toBe(true);
+        expect(pageSpareAt(layout, board, layout.topViewRoom + 1), `${what}: gave more room than the page lacked`).toBeLessThan(BOTTOM_SHEET_SPARE);
+      } else {
+        expect(wholeRoom, what).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      }
+    }
+    expect(gave, "some pages give the picture's room (non-vacuity)").toBeGreaterThan(0);
+  }, 60_000);
 });
 
 describe("bottomSheetStationsLine: a cut's three stations in words", () => {
