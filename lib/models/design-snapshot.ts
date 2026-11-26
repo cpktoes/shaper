@@ -178,7 +178,8 @@
  *    A nose concave's `railRoll` (the founder, 2026-11-25, quick 261125-mf8: the Rail Roll on the Teardrop Nose
  *    Concave, the Blended Nose Concave and the Slight Single Concave Entry) is optional and forgiving on its own, in the
  *    trough rule's words: absent reads 0, so every board saved before it opens with no key and saves again the same
- *    way. A roll that is not a number, below 0, past the depth family's outer bound (1"), or on any cut that is not one
+ *    way. A roll that is not a number, below 0, past its own bound — the Rail Roll slider's top, 1/2"
+ *    (`BOTTOM_MARK_RANGES_IN.railRoll`; the founder, 2026-11-26, quick 261126-czw) — or on any cut that is not one
  *    of the three nose concaves leaves no key at all and keeps the cut and the rest of the board; a roll of 0 leaves no
  *    key either. The version stays 5, for rule 6's reason: the reader on `main` drops the unknown key, so a board saved
  *    here opens there with its nose unrolled. No database change.
@@ -202,6 +203,7 @@ import {
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_MARK_RANGES_IN,
   CHANNEL_ANGLE_MAX,
   DEFAULT_BOTTOM,
   isDefaultBottom,
@@ -561,10 +563,13 @@ const finSystemSchema = z.enum(["fcs2", "fcsOriginal", "futures", "lokbox", "pro
  * trough to 8", depth and lift to 1/2", a channel to 4" wide, a stagger to 8"). Each bound stands clear of
  * its slider's far end, so a value a shaper really set is never read as bad. A station may be signed — a
  * Tail cut's Deepest At and the channels' Start and Deepest At are measured from the front fins — and none
- * can be further off than the longest board a snapshot holds.
+ * can be further off than the longest board a snapshot holds. The one exception is a nose concave's Rail Roll, bounded
+ * at its slider's own end, 1/2", rather than clear of it (the founder, 2026-11-26, quick 261126-czw): the slider's top
+ * stores exactly that figure in Imperial and in Metric, so a roll a shaper really set is still never read as bad.
  */
 const bottomAcrossSchema = z.number().min(0).max(inchesToMm(12));
 const bottomDepthSchema = z.number().min(0).max(inchesToMm(1));
+const bottomRailRollSchema = z.number().min(0).max(inchesToMm(BOTTOM_MARK_RANGES_IN.railRoll.max));
 const bottomStationSchema = z.number().min(-SNAPSHOT_BOARD_LENGTH_MM.max).max(SNAPSHOT_BOARD_LENGTH_MM.max);
 const bottomSmoothnessSchema = z.number().min(0).max(100);
 
@@ -590,9 +595,9 @@ const bottomCutSchema = (section: BottomSectionKey) =>
       // Trough At, and the cut and its rule are kept.
       troughStart: bottomAcrossSchema.optional().catch(undefined),
       troughEnd: bottomAcrossSchema.optional().catch(undefined),
-      // A nose concave's Rail Roll (quick 261125-mf8), a height of the depth family: forgiving on its own, so a bad roll
-      // never costs a board its cut.
-      railRoll: bottomDepthSchema.optional().catch(undefined),
+      // A nose concave's Rail Roll (quick 261125-mf8), a height of the depth family held to its own slider's 0 to 1/2"
+      // (quick 261126-czw, D-03): forgiving on its own, so a bad roll never costs a board its cut.
+      railRoll: bottomRailRollSchema.optional().catch(undefined),
     })
     // A rule or an end that was bad (or never there) is left out of the cut altogether, not kept as an empty key: a
     // board that never chose one stores and reads back exactly the keys it always did.
