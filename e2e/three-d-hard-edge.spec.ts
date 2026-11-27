@@ -19,6 +19,8 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
  * RAILS' own two rows over the very same two values: move Tail Rail Ends At on 3D and RAILS reads it and VOLUME's
  * litres move; move it on RAILS and the 3D row follows. The rows bound the tail's whole rail, so they are live with
  * the tail's Hard Edge off too — a Sharp-Bottom-Tucked tail blends between them just as a hard edge does.
+ * The nose got its own two rows in quick 261127-kkw (the founder's reversal of D-32, 2026-11-27), drawn above the
+ * tail's in their own group; they are covered by e2e/nose-rail-blend.spec.ts.
  *
  * Each screen is opened by its address: the board in progress is kept in this browser (quick 261019-ep5), so every
  * address opens the same board, once the kept copy holds the change.
