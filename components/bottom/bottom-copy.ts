@@ -73,6 +73,8 @@ export const BOTTOM_COPY = {
   /** A nose concave's Rail Roll (the founder, 2026-11-25, quick 261125-mf8): the row right after Off Rail. First drafts. */
   railRoll: "Rail Roll",
   railRollLeft: "Level to the rail",
+  /** Under the Rail Roll row while it is greyed at Depth 0 (the founder, 2026-11-27: "use your hint line"). */
+  railRollNeedsDepth: "Set a Depth to roll the rail.",
   offStringer: "Off Stringer",
   offStringerLeft: "At the stringer",
   troughAt: "Trough At",

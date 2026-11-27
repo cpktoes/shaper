@@ -170,6 +170,7 @@ describe("the floor's fix on a nose concave with a Rail Roll (quick 261125-mf8)"
   it("the Rail Roll's row words", () => {
     expect(BOTTOM_COPY.railRoll).toBe("Rail Roll");
     expect(BOTTOM_COPY.railRollLeft).toBe("Level to the rail");
+    expect(BOTTOM_COPY.railRollNeedsDepth).toBe("Set a Depth to roll the rail.");
   });
 
   it.each(SYSTEMS)("the rail form on a rolled cut names the roll in the fix (%s)", (system) => {

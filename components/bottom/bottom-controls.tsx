@@ -78,6 +78,8 @@ const SELECT_LABEL = "mb-1.5 text-sm text-surf-ink-muted font-normal";
 
 /** The floor sentence under a Depth row: ROCKER's too-close line exactly (`components/rocker/rocker-controls.tsx:416`). */
 const FLOOR_LINE = "mt-2 text-xs text-surf-warning-ink";
+/** A plain hint under a row, in the floor line's place and size but in muted ink: it explains, it does not warn. */
+const HINT_LINE = "mt-2 text-xs text-surf-ink-muted";
 
 /** The mark sliders' step (UI-SPEC §1): 1/16", 1 mm in Metric, through `measureSlider`; it lives in `bottom.ts`. */
 const MARK_STEP_IN = BOTTOM_MARK_STEP_IN;
@@ -423,15 +425,16 @@ function BottomSectionCard({
         if (row === "start" || row === "deepest" || row === "end") {
           return <StationRow key={row} section={section} field={row} resolved={resolved} board={board} system={system} onChange={onChange} />;
         }
+        // The Rail Roll row reads the STORED roll and greys while Depth is 0, where a concave cuts nothing and the
+        // roll it carries is none (quick 261126-czw, D-01): dragging Depth back brings the roll back as it was.
+        const rollNeedsDepth = row === "railRoll" && resolved.depth <= 0;
         const mark = (
           <MarkRow
             key={row}
             name={BOTTOM_COPY.sliderName(section, MARK_ROWS[row].label)}
             field={row}
-            // The Rail Roll row reads the STORED roll and greys while Depth is 0, where a concave cuts nothing and the
-            // roll it carries is none (quick 261126-czw, D-01): dragging Depth back brings the roll back as it was.
             value={row === "railRoll" ? railRollOf(section, spec) : resolved[row]}
-            disabled={row === "railRoll" ? resolved.depth <= 0 : undefined}
+            disabled={row === "railRoll" ? rollNeedsDepth : undefined}
             system={system}
             onChange={(value) => onChange({ [row]: value })}
           />
@@ -446,6 +449,15 @@ function BottomSectionCard({
                 {floor}
               </p>
             )}
+          </div>
+        ) : rollNeedsDepth && !locked ? (
+          // Why the row is grey, in a line of its own under it so it stays at full strength (the founder, 2026-11-27).
+          // A locked board greys every row for its own reason and takes no hint.
+          <div key={row}>
+            {mark}
+            <p data-bottom-roll-hint className={HINT_LINE}>
+              {BOTTOM_COPY.railRollNeedsDepth}
+            </p>
           </div>
         ) : (
           mark

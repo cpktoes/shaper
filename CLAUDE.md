@@ -160,7 +160,7 @@ know why:
   custom-rocker figure that is drawn, tabled or slid follows the chosen system like any other (the
   amounts as marks, where a bend starts as a dim).
 
-One more exception, on the screens rather than the paper: a BOTTOM depth (a cut's, the channels') reads to the nearest 1/64" as a
+One more exception, on the screens rather than the paper: a BOTTOM depth (a cut's, the channels', and a nose concave's Rail Roll) reads to the nearest 1/64" as a
 reduced fraction (`3/64"`, `1/8"`) and to 0.1 mm in Metric (`3.2 mm`), and its slider steps the same way (the founder, 2026-11-16,
 quick 261116-tqs, D-09) — the one mark family finer than the whole-millimetre house rule. It goes through `formatBottomDepth` in
 `lib/geometry/measure-display.ts`. BOTTOM's across marks stay 1/16" / 1 mm and its stations 1/2" / 10 mm, and a depth on a 1/16"

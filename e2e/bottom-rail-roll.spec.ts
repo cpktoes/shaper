@@ -185,6 +185,9 @@ test.describe("BOTTOM's Rail Roll on a nose concave", () => {
     await page.keyboard.press("Home");
     await expect(roll).toBeDisabled({ timeout: 20_000 });
     expect(await rollLine(page)).toBe(line);
+    // And a line under it says why (the founder, 2026-11-27).
+    const hint = card(page, "nose").locator("[data-bottom-roll-hint]");
+    await expect(hint).toHaveText(BOTTOM_COPY.railRollNeedsDepth);
 
     // A reload at Depth 0 keeps the roll and the greyed row.
     await expect(async () => {
@@ -199,5 +202,6 @@ test.describe("BOTTOM's Rail Roll on a nose concave", () => {
     await page.keyboard.press("End");
     await expect(page.getByRole("slider", { name: ROLL_SLIDER, exact: true })).toBeEnabled({ timeout: 20_000 });
     expect(await rollLine(page)).toBe(line);
+    await expect(card(page, "nose").locator("[data-bottom-roll-hint]")).toHaveCount(0);
   });
 });
