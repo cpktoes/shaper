@@ -51,7 +51,7 @@ import { HALF_SECTION_POINT_COUNT, openedFinishedRail, railReach, sampledFinishe
 import { foilStationPoints } from "./foil";
 import type { Vec3 } from "./board-surface";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt, noseBlendsFrom, noseBlendStations, noseEndsAt } from "./rail-bands";
 import { frontFinStation } from "./fins";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, mm, type Mm } from "./units";
@@ -254,6 +254,59 @@ describe("where the surface takes its rings", () => {
     const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
     expect(gap).toBeLessThanOrEqual(0);
     expect(gap).toBeGreaterThan(-0.0015);
+  });
+});
+
+describe("the nose rail's blend gets a ring at each end, and an untouched board's rings are where they were (quick 261127-kkw)", () => {
+  /** The Shortboard with the nose's Symmetrical flipped: a nose rail that differs from the centre's. */
+  const differing = (): DesignSummaryFields => {
+    const fields = boardOf("shortboard|asis|hard");
+    return { ...fields, rails: { ...fields.rails, nose: { ...fields.rails.nose, symmetrical: !fields.rails.nose.symmetrical } } };
+  };
+
+  it("a nose blend set off the grid (blends from 20 1/2\", ends at 33\" from the nose) gets a ring exactly at its start and its end", () => {
+    const fields = differing();
+    const set: DesignSummaryFields = {
+      ...fields,
+      rails: { ...fields.rails, noseRailBlendsFrom: inchesToMm(20.5), noseRailEndsAt: inchesToMm(33) },
+    };
+    const { input } = surfaceInputOf(set);
+    const { rails, length } = input.sections;
+    expect(railCharacterDifferences(rails, "nose").length).toBeGreaterThan(0);
+    // The board's own readers keep both settings as set.
+    expect(noseBlendsFrom(rails, length)).toBe(inchesToMm(20.5));
+    expect(noseEndsAt(rails, length)).toBe(inchesToMm(33));
+    const fullFrom = mm(length - inchesToMm(20.5));
+    const goneAt = mm(length - inchesToMm(33));
+    const anchors = foilStationPoints(input.sections.foil, length);
+    expect(noseBlendStations(rails, length, anchors[2].station, anchors[3].station)).toEqual({ fullFrom, goneAt });
+    const surface = buildBoardSurface(input);
+    const stations = surface.rings.map((ring) => ring.station as number);
+    expect(stations).toContain(fullFrom);
+    expect(stations).toContain(goneAt);
+    // The nose's rail ahead of the first, the centre's behind the second, a blend between: as boardSections says.
+    const [atEnd, atStart] = boardSections(input.sections, [goneAt, fullFrom]);
+    expect(atStart.tipWeight).toBe(1);
+    expect(atEnd.tipWeight).toBe(0);
+    expect(surface.rings.some((ring) => ring.station > goneAt && ring.station < fullFrom && isBlending(input, ring.station))).toBe(true);
+    expect(surface.rings.filter((ring) => ring.station > fullFrom).every((ring) => !isBlending(input, ring.station))).toBe(true);
+    expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+    const litres = computeCrossSectionVolume(input.sections).volumeLitres;
+    const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
+    expect(gap).toBeLessThanOrEqual(0);
+    expect(gap).toBeGreaterThan(-0.0015);
+  });
+
+  it("a board that stores neither key takes the rings it took before: the two it would add are the centre and the nose 12\" station, already there", () => {
+    const { input } = surfaceInputOf(differing());
+    const { rails, length, foil } = input.sections;
+    const anchors = foilStationPoints(foil, length);
+    const { fullFrom, goneAt } = noseBlendStations(rails, length, anchors[2].station, anchors[3].station);
+    expect(fullFrom).toBe(anchors[3].station);
+    expect(goneAt).toBe(anchors[2].station);
+    const stations = surfaceStations(input);
+    expect(stations.filter((s) => s === fullFrom)).toHaveLength(1);
+    expect(stations.filter((s) => s === goneAt)).toHaveLength(1);
   });
 });
 

@@ -57,6 +57,8 @@ export function RailBandEditor() {
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,
+    setNoseRailBlendsFrom,
+    setNoseRailEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     // RAILS draws and tables the rail the bottom leaves (Phase 17, D-22, D-35, D-41): the very `railBands` while no
@@ -323,6 +325,8 @@ export function RailBandEditor() {
             onToggleHardEdge={toggleHardEdge}
             onChangeHardEdgeBlendsFrom={setTailHardEdgeBlendsFrom}
             onChangeHardEdgeEndsAt={setTailHardEdgeEndsAt}
+            onChangeNoseRailBlendsFrom={setNoseRailBlendsFrom}
+            onChangeNoseRailEndsAt={setNoseRailEndsAt}
             boardLength={outline.length}
             onChangeNudge={updateRailNudge}
             onResetAdvanced={resetRailAdvanced}

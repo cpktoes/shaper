@@ -172,7 +172,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await openRails(page);
   });
 
-  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck, Sharp Bottom Tuck after Bottom Tuck 3 and Reset; the Center rail's has no scale", async ({
+  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck, Sharp Bottom Tuck after Bottom Tuck 3, its two blend rows under their note and Reset; the Center rail's has no scale and no blend rows", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
@@ -187,15 +187,22 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
       /^Bottom Tuck 1 — .+ \(.+\)$/,
       /^Bottom Tuck 3 — .+ \(.+\)$/,
       /^Sharp Bottom Tuck$/,
+      // The nose's own blend rows under the note the tail's carry (quick 261127-kkw, the founder 2026-11-27).
+      /^These controls are invisible here and corresponding controls with visual verification are found on the 3D page\.$/,
+      /^Nose Rail Blends From — .+$/,
+      /^Nose Rail Ends At — .+$/,
       /Reset Advanced Settings$/,
     ];
     expect(noseRows.length).toBe(expected.length);
     expected.forEach((re, i) => expect(noseRows[i]).toMatch(re));
 
+    // The centre's list is the nose's without the scale and without the three blend rows.
+    const centerExpected = expected.slice(1).filter((re) => !/invisible here|Nose Rail/.test(re.source));
+    expect(centerExpected.length).toBe(expected.length - 4);
     const center = await showRail(page, testInfo, "center");
     const centerRows = await advancedRows(await openAdvanced(center));
-    expect(centerRows.length).toBe(expected.length - 1);
-    expected.slice(1).forEach((re, i) => expect(centerRows[i]).toMatch(re));
+    expect(centerRows.length).toBe(centerExpected.length);
+    centerExpected.forEach((re, i) => expect(centerRows[i]).toMatch(re));
     expect(centerRows.some((r) => r.startsWith("Scaled from center by"))).toBe(false);
     // Deck Mark 2 and Bottom Tuck 2 are always halfway (plan 04, R17): no slider of their own.
     for (const rows of [noseRows, centerRows]) {
@@ -1193,16 +1200,22 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${ownEnd}`);
   });
 
-  test("11. the nose's and the centre's Advanced menus have neither row: the nose's blend is automatic", async ({ page }, testInfo) => {
+  test("11. the centre's Advanced menu has neither blend row; the nose's has its own two and never the tail's (quick 261127-kkw)", async ({ page }, testInfo) => {
     await openRails(page);
-    for (const key of ["nose", "center"] as const) {
-      const group = await showRail(page, testInfo, key);
-      const body = await openAdvanced(group);
-      await expect(body.getByRole("button", { name: /Reset Advanced Settings/ })).toBeVisible();
-      await expect(group.getByText(/^Tail Rail (Blends From|Ends At) — /)).toHaveCount(0);
-      const rows = await advancedRows(body);
-      expect(rows.filter((row) => /Blends From|Ends At/.test(row))).toEqual([]);
-    }
+    const center = await showRail(page, testInfo, "center");
+    const centerBody = await openAdvanced(center);
+    await expect(centerBody.getByRole("button", { name: /Reset Advanced Settings/ })).toBeVisible();
+    await expect(center.getByText(/^(Tail|Nose) Rail (Blends From|Ends At) — /)).toHaveCount(0);
+    expect((await advancedRows(centerBody)).filter((row) => /Blends From|Ends At/.test(row))).toEqual([]);
+
+    const nose = await showRail(page, testInfo, "nose");
+    const noseBody = await openAdvanced(nose);
+    await expect(noseBody.getByRole("button", { name: /Reset Advanced Settings/ })).toBeVisible();
+    await expect(nose.getByText(/^Tail Rail (Blends From|Ends At) — /)).toHaveCount(0);
+    const blendRows = (await advancedRows(noseBody)).filter((row) => /Blends From|Ends At/.test(row));
+    expect(blendRows).toHaveLength(2);
+    expect(blendRows[0]).toMatch(/^Nose Rail Blends From — /);
+    expect(blendRows[1]).toMatch(/^Nose Rail Ends At — /);
   });
 });
 

@@ -12,8 +12,11 @@ import {
   noseBlendSweepBoards,
 } from "./__fixtures__/nose-blend-boards";
 import pin from "./__fixtures__/nose-blend-pin.json";
+import { DEFAULT_BOARD_SPEC } from "./board";
 import type { BoardSurface } from "./board-surface";
+import { brdRailsSpec, newBoardRailSetting, type BrdRailSettings } from "./brd-rails";
 import { summarizeDesign } from "./design";
+import { inchesToMm } from "./units";
 import { railCharacterDifferences } from "./volume";
 
 /**
@@ -112,5 +115,25 @@ describe("the record taken before the nose rail's blend had sliders (quick 26112
         SLOW,
       );
     }
+  });
+});
+
+describe("opening a .brd file is unchanged: the board it opens says nothing about the nose's blend (quick 261127-kkw, D-07)", () => {
+  const foil = DEFAULT_BOARD_SPEC.foil;
+  // A nose that differs from the centre, so a fitted nose blend would have something to say if there were one.
+  const settings: BrdRailSettings = {
+    nose: { ...newBoardRailSetting("nose"), symmetrical: true, sharpBottomTuck: true },
+    center: newBoardRailSetting("center"),
+    tail: { ...newBoardRailSetting("tail"), hardEdge: true },
+  };
+
+  it("the rails an opened file gets carry neither nose key, with a fitted tail blend and without", () => {
+    const blend = { blendsFrom: inchesToMm(16), endsAt: inchesToMm(30) };
+    for (const rails of [brdRailsSpec(settings, foil), brdRailsSpec(settings, foil, null), brdRailsSpec(settings, foil, blend)]) {
+      expect("noseRailBlendsFrom" in rails).toBe(false);
+      expect("noseRailEndsAt" in rails).toBe(false);
+      expect(JSON.stringify(rails)).not.toContain("noseRail");
+    }
+    expect(brdRailsSpec(settings, foil, blend).tailHardEdgeBlendsFrom).toBe(blend.blendsFrom);
   });
 });

@@ -695,3 +695,53 @@ describe("design-store.tsx — a board opened from a file is a new, unsaved boar
     expect(balancedFrom(SOURCE, start + "const value: DesignContextValue =".length)).toMatch(/\n\s+applyBoardFile,/);
   });
 });
+
+describe("design-store.tsx — the nose rail's two blend settings, set and put back like the tail's (quick 261127-kkw, D-06)", () => {
+  const SETTERS = [
+    { name: "setNoseRailBlendsFrom", key: "noseRailBlendsFrom", edit: "rails:nose:railBlendsFrom" },
+    { name: "setNoseRailEndsAt", key: "noseRailEndsAt", edit: "rails:nose:railEndsAt" },
+  ] as const;
+
+  for (const { name, key, edit } of SETTERS) {
+    it(`${name} checks the lock first, is its own undo step, and writes only its own key`, () => {
+      const body = handler(name);
+      const afterArrow = body.slice(body.indexOf("=>") + 2).replace(/^\s*\{\s*/, "");
+      expect(afterArrow).toMatch(/^if \(lockedRef\.current\) return;\s*noteEdit\(/);
+      expect(body).toContain(`noteEdit("${edit}")`);
+      expect(body).toMatch(new RegExp(`rails:\\s*\\{\\s*\\.\\.\\.prev\\.rails,\\s*${key}:\\s*value\\s*\\}`));
+      for (const other of ["noseRailBlendsFrom", "noseRailEndsAt", "tailHardEdgeBlendsFrom", "tailHardEdgeEndsAt"]) {
+        if (other !== key) expect(body, other).not.toContain(other);
+      }
+      expect(body).toMatch(/\bdirty:\s*true\b/);
+    });
+  }
+
+  it("the four blend sliders each have an undo key of their own", () => {
+    const keys = ["setTailHardEdgeBlendsFrom", "setTailHardEdgeEndsAt", "setNoseRailBlendsFrom", "setNoseRailEndsAt"].map(
+      (name) => handler(name).match(/noteEdit\("([^"]+)"\)/)?.[1],
+    );
+    expect(keys.every(Boolean)).toBe(true);
+    expect(new Set(keys).size).toBe(4);
+  });
+
+  it("resetRailAdvanced takes both nose keys out for the nose, both tail keys out for the tail, and never sets one to undefined", () => {
+    const body = handler("resetRailAdvanced");
+    expect(body).toMatch(/noteEdit\(null\)/);
+    const noseRest = body.match(/\{\s*noseRailBlendsFrom:\s*_\w+,\s*noseRailEndsAt:\s*_\w+,\s*\.\.\.(\w+)\s*\}\s*=\s*prev\.rails/)?.[1];
+    const tailRest = body.match(/\{\s*tailHardEdgeBlendsFrom:\s*_\w+,\s*tailHardEdgeEndsAt:\s*_\w+,\s*\.\.\.(\w+)\s*\}\s*=\s*prev\.rails/)?.[1];
+    expect(noseRest, "the nose's pair destructured out of prev.rails").toBeTruthy();
+    expect(tailRest, "the tail's pair destructured out of prev.rails").toBeTruthy();
+    // Each card's Reset rebuilds the rails without its OWN pair; the centre's keeps them as they were.
+    expect(body).toMatch(
+      new RegExp(`key === "tail"\\s*\\?\\s*${tailRest}\\s*:\\s*key === "nose"\\s*\\?\\s*${noseRest}\\s*:\\s*prev\\.rails`),
+    );
+    expect(body).not.toMatch(/(noseRail\w+|tailHardEdge(BlendsFrom|EndsAt)):\s*undefined/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+
+  it("both setters are on the context value", () => {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    const value = balancedFrom(SOURCE, start + "const value: DesignContextValue =".length);
+    for (const { name } of SETTERS) expect(value, name).toMatch(new RegExp(`\\n\\s+${name},`));
+  });
+});
