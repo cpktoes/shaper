@@ -16,9 +16,9 @@ const page = readGuideWordsPage();
 const rails = page.pages[2];
 
 describe("RAILS' words module equals the words page", () => {
-  it("is the page's third section: RAILS, with its seventeen cards", () => {
+  it("is the page's third section: RAILS, with its eighteen cards", () => {
     expect(rails.page).toBe("rails");
-    expect(rails.cards).toHaveLength(17);
+    expect(rails.cards).toHaveLength(18);
   });
 
   it("card for card, in order: id, group, name, is, does, info and how", () => {
@@ -35,7 +35,7 @@ describe("RAILS' words module equals the words page", () => {
     expect(RAILS_GUIDE_GROUPS).toEqual(rails.groups);
   });
 
-  it("its ids are the builder's seventeen, in order", () => {
+  it("its ids are the builder's eighteen, in order", () => {
     expect(RAILS_GUIDE_WORDS.map((card) => card.id)).toEqual(RAILS_GUIDE_CARD_ORDER);
   });
 
@@ -55,7 +55,7 @@ describe("RAILS' words module equals the words page", () => {
       expect(guideCaptionText(model.caption), `${card.name} caption`).toBe(card.caption ?? "");
       if (card.caption !== null) captions++;
     }
-    expect(tags).toBe(14);
-    expect(captions).toBe(16);
+    expect(tags).toBe(15);
+    expect(captions).toBe(17);
   });
 });

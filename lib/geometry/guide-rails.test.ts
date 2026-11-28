@@ -26,6 +26,8 @@ import {
   computeRailSectionOutput,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
+  noseBlendsFrom,
+  noseEndsAt,
   railFamilyLabel,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
@@ -58,14 +60,19 @@ function withField(spec: RailSectionSpec, field: string, value: unknown): RailSe
 }
 
 describe("buildRailsGuide — the Shortboard as its card opens it", () => {
-  it("gives the seventeen cards in the words page's order", () => {
-    expect(RAILS_GUIDE_CARD_ORDER).toHaveLength(17);
+  it("gives the eighteen cards in the words page's order, the nose's blend card just before the tail's", () => {
+    expect(RAILS_GUIDE_CARD_ORDER).toHaveLength(18);
     expect([...buildRailsGuide(shortboard, "imperial").keys()]).toEqual(RAILS_GUIDE_CARD_ORDER);
+    expect(RAILS_GUIDE_CARD_ORDER.slice(-2)).toEqual([ids.noseBlends, ids.blends]);
+    expect(RAILS_GUIDE_PUSH_FIELDS[ids.noseBlends]).toBe("noseRailBlends");
+    expect(RAILS_GUIDE_PUSH_FIELDS[ids.blends]).toBe("tailHardEdgeBlends");
   });
 
-  it("draws every card at the center, and at the tail only for the controls the tail alone has (D-04)", () => {
+  it("draws every card at the center, at the tail only for the controls the tail alone has (D-04), and at the nose only for the nose's own blend", () => {
     const tail = RAILS_GUIDE_CARD_ORDER.filter((id) => RAILS_GUIDE_SECTION[id] === "tail");
     expect(tail).toEqual([ids.hardEdge, ids.scaled, ids.blends]);
+    const nose = RAILS_GUIDE_CARD_ORDER.filter((id) => RAILS_GUIDE_SECTION[id] === "nose");
+    expect(nose).toEqual([ids.noseBlends]);
   });
 
   it("tags and captions each card in Imperial as the founder's page reads it", () => {
@@ -100,6 +107,22 @@ describe("buildRailsGuide — the Shortboard as its card opens it", () => {
     expect(buildRailsGuide(shortboard, "metric").get(ids.blends)!.tag.text).toBe(`${formatDim(from, "metric")} · ${formatDim(ends, "metric")}`);
   });
 
+  it("reads Nose Rail Blends From · Ends At as RAILS' own nose sliders show it — 12\" and the top of Ends At's slider, 37\" on the Shortboard", () => {
+    const from = noseBlendsFrom(shortboard.effectiveRails, shortboard.boardLength);
+    const ends = noseEndsAt(shortboard.effectiveRails, shortboard.boardLength);
+    expect(tagOf(shortboard, ids.noseBlends).text).toBe(`${formatDim(from, "imperial")} · ${formatDim(ends, "imperial")}`);
+    // As the words page says. The dashed "what if" can only move Blends From, 6" toward the centre: both marks sit at
+    // their slider's ends, so the pair cannot move together.
+    expect(tagOf(shortboard, ids.noseBlends).text).toBe('12" · 37"');
+    expect(captionOf(shortboard, ids.noseBlends)).toBe('dashed · 18" · 37"');
+    expect(buildRailsGuide(shortboard, "metric").get(ids.noseBlends)!.tag.text).toBe(`${formatDim(from, "metric")} · ${formatDim(ends, "metric")}`);
+    // A stored pair is read as stored, and the tail's card is not moved by it.
+    const stored = guideRailsInput("shortboard", (r) => ({ ...r, noseRailBlendsFrom: inchesToMm(20), noseRailEndsAt: inchesToMm(26) }));
+    expect(tagOf(stored, ids.noseBlends).text).toBe(`${formatDim(inchesToMm(20), "imperial")} · ${formatDim(inchesToMm(26), "imperial")}`);
+    expect(tagOf(stored, ids.blends)).toEqual(tagOf(shortboard, ids.blends));
+    expect(captionOf(stored, ids.blends)).toBe(captionOf(shortboard, ids.blends));
+  });
+
   it("tags a toggle On this board only while it is ticked", () => {
     const cards = buildRailsGuide(shortboard, "imperial");
     for (const id of [ids.importFoil, ids.hardEdge]) expect(cards.get(id)!.tag, id).toEqual({ kind: "on", text: "On this board" });
@@ -127,7 +150,7 @@ describe("railsGuideVariants — every push is the board with one field changed,
           if (id === ids.importFoil) continue;
           expect(v, id).not.toBeNull();
           if (v!.kind === "blends") {
-            expect(id).toBe(ids.blends);
+            expect([ids.noseBlends, ids.blends]).toContain(id);
             continue;
           }
           const base = input.effectiveRails[v!.key];
@@ -166,6 +189,25 @@ describe("railsGuideVariants — every push is the board with one field changed,
       const blends = v[ids.blends] as { blendsFrom: number; endsAt: number };
       expect(blends.blendsFrom).toBeCloseTo(hardEdgeBlendsFrom(shortboard.effectiveRails, shortboard.boardLength) + push.blends, 9);
       expect(blends.endsAt).toBeCloseTo(hardEdgeEndsAt(shortboard.effectiveRails, shortboard.boardLength), 9);
+      // The nose's pair the same way, from the nose: both at their slider's ends, so Blends From alone moves.
+      const noseBlends = v[ids.noseBlends] as { blendsFrom: number; endsAt: number };
+      expect(noseBlends.blendsFrom).toBeCloseTo(noseBlendsFrom(shortboard.effectiveRails, shortboard.boardLength) + push.blends, 9);
+      expect(noseBlends.endsAt).toBeCloseTo(noseEndsAt(shortboard.effectiveRails, shortboard.boardLength), 9);
+    }
+  });
+
+  it("pushes a stored mid nose pair as a pair, the push toward the centre, and leaves the tail's push alone", () => {
+    const fields = presetDesignFields(BOARD_PRESETS.find((p) => p.id === "shortboard")!);
+    const stored = railsGuideInputFromFields({
+      ...fields,
+      rails: { ...fields.rails, noseRailBlendsFrom: inchesToMm(20), noseRailEndsAt: inchesToMm(26) },
+    });
+    for (const system of UNITS_SYSTEMS) {
+      const push = guidePush(system).rails;
+      const noseBlends = railsGuideVariants(stored, system)[ids.noseBlends] as { blendsFrom: number; endsAt: number };
+      expect(noseBlends.blendsFrom).toBeCloseTo(inchesToMm(20) + push.blends, 9);
+      expect(noseBlends.endsAt).toBeCloseTo(inchesToMm(26) + push.blends, 9);
+      expect(railsGuideVariants(stored, system)[ids.blends]).toEqual(railsGuideVariants(shortboard, system)[ids.blends]);
     }
   });
 
@@ -209,7 +251,7 @@ describe("railsGuideVariants — every push is the board with one field changed,
     for (const card of buildRailsGuide(shortboard, "imperial").values()) {
       const pushes = prims(card.figure).filter((p) => (p.kind === "path" || p.kind === "line") && p.role === "push");
       if (card.id === ids.importFoil) expect(pushes, card.id).toHaveLength(0);
-      else if (card.id === ids.blends) expect(pushes, card.id).toHaveLength(2);
+      else if (card.id === ids.blends || card.id === ids.noseBlends) expect(pushes, card.id).toHaveLength(2);
       else expect(pushes, card.id).toHaveLength(1);
     }
   });
@@ -322,8 +364,10 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
       else expect(guideCaptionText(cards.get(id)!.caption), id).toMatch(/^dashed · [+-]?\d+ mm( thick)?$/);
     }
     expect(cards.get(ids.deckProfile)!.tag.text).toMatch(/^\d+ mm · Flat$/);
-    expect(cards.get(ids.blends)!.tag.text).toMatch(/^\d+\.\d cm · \d+\.\d cm$/);
-    expect(guideCaptionText(cards.get(ids.blends)!.caption)).toMatch(/^dashed · \d+\.\d cm · \d+\.\d cm$/);
+    for (const id of [ids.blends, ids.noseBlends]) {
+      expect(cards.get(id)!.tag.text, id).toMatch(/^\d+\.\d cm · \d+\.\d cm$/);
+      expect(guideCaptionText(cards.get(id)!.caption), id).toMatch(/^dashed · \d+\.\d cm · \d+\.\d cm$/);
+    }
     for (const card of cards.values()) {
       const text = `${card.name ?? ""} ${card.tag.text} ${guideCaptionText(card.caption)} ${prims(card.figure)
         .flatMap((p) => (p.kind === "text" || p.kind === "dim" ? p.parts.map((part) => part.text) : []))
@@ -338,6 +382,16 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
       const bands = all.filter((p): p is Extract<GuidePrim, { kind: "path" }> => p.kind === "path" && p.role === "band");
       if (card.id === ids.blends) {
         expect(bands.map((b) => b.band)).toEqual(["hardEdge"]);
+        continue;
+      }
+      if (card.id === ids.noseBlends) {
+        // The nose from above: no band colours, the nose's rail in ink to Blends From and faint dashes to Ends At,
+        // always drawn (a nose always has a rail), and two marks across the rail.
+        expect(bands).toEqual([]);
+        expect(all.filter((p) => p.kind === "path" && p.role === "rail"), card.id).toHaveLength(1);
+        expect(all.filter((p) => p.kind === "path" && p.role === "thinning"), card.id).toHaveLength(1);
+        expect(all.filter((p) => p.kind === "line" && p.role === "mark"), card.id).toHaveLength(2);
+        expect(all.filter((p) => p.kind === "line" && p.role === "apex"), card.id).toHaveLength(0);
         continue;
       }
       const own = new Set(shortboard.railBands[RAILS_GUIDE_SECTION[card.id]].segments.map((s) => s.key));
@@ -365,10 +419,27 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
     }
   });
 
-  it("draws a section card 186 tall and the tail from above 176 (UI-SPEC §4)", () => {
+  it("draws a section card 186 tall and a tip from above 176 (UI-SPEC §4)", () => {
     for (const card of buildRailsGuide(shortboard, "imperial").values()) {
-      expect(card.figure.height, card.id).toBe(card.id === ids.blends ? 176 : 186);
+      expect(card.figure.height, card.id).toBe(card.id === ids.blends || card.id === ids.noseBlends ? 176 : 186);
     }
+  });
+
+  it("the nose's blend card is the one card drawn at the nose: its window sits over the nose end of the strip, the tail's over the tail end", () => {
+    const cards = buildRailsGuide(shortboard, "imperial");
+    const windowOf = (id: string) => cards.get(id)!.figure.strip.find((p): p is Extract<GuidePrim, { kind: "rect" }> => p.kind === "rect" && p.role === "window")!;
+    const noseWindow = windowOf(ids.noseBlends);
+    const tailWindow = windowOf(ids.blends);
+    // Nose left on every strip: the nose's window starts left of the tail's and ends left of it.
+    expect(noseWindow.x).toBeLessThan(tailWindow.x);
+    expect(noseWindow.x + noseWindow.w).toBeLessThan(tailWindow.x + tailWindow.w);
+    const names = (id: string) =>
+      prims(cards.get(id)!.figure).flatMap((p) => (p.kind === "text" && p.role === "name" ? p.parts.map((part) => part.text) : []));
+    expect(names(ids.noseBlends)).toEqual(["Nose, from above"]);
+    expect(names(ids.blends)).toEqual(["Tail, from above"]);
+    // The station the strip cuts dash-dot is the nose's on the nose's card and the tail's on the tail's.
+    const cutX = (id: string) => cards.get(id)!.figure.strip.find((p): p is Extract<GuidePrim, { kind: "line" }> => p.kind === "line" && p.role === "cut")!.x1;
+    expect(cutX(ids.noseBlends)).toBeLessThan(cutX(ids.blends));
   });
 });
 
@@ -379,9 +450,11 @@ describe("buildRailsGuide — the new default's labels stay inside their box (qu
     for (const preset of PRESETS) {
       const input = guideRailsInput(preset);
       for (const system of UNITS_SYSTEMS) {
-        const card = buildRailsGuide(input, system).get(ids.blends)!;
-        for (const fit of [0.7, 0.79, 1.26]) {
-          expect(guideLabelOverlaps(card.figure, fit), `${preset} ${system} at ${fit}`).toEqual([]);
+        for (const id of [ids.blends, ids.noseBlends]) {
+          const card = buildRailsGuide(input, system).get(id)!;
+          for (const fit of [0.7, 0.79, 1.26]) {
+            expect(guideLabelOverlaps(card.figure, fit), `${preset} ${system} ${id} at ${fit}`).toEqual([]);
+          }
         }
       }
     }
@@ -398,11 +471,54 @@ describe("buildRailsGuide — a short board", () => {
         const outline = { ...fields.outline, length: inchesToMm(inches), widePointWidth: inchesToMm(wide) };
         const input = railsGuideInputFromFields({ ...fields, outline });
         for (const system of UNITS_SYSTEMS) {
-          const card = buildRailsGuide(input, system).get(ids.blends)!;
+          for (const id of [ids.blends, ids.noseBlends]) {
+            const card = buildRailsGuide(input, system).get(id)!;
+            for (const fit of [0.7, 0.79, 1.26]) {
+              expect(guideLabelOverlaps(card.figure, fit), `${inches}" x ${wide}" ${system} ${id} at ${fit}`).toEqual([]);
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("buildRailsGuide — the nose's blend card on the shortest board and with a stored pair (quick 261127-kkw)", () => {
+  const fields = presetDesignFields(BOARD_PRESETS.find((p) => p.id === "shortboard")!);
+
+  it("keeps both figures whole, inside the box and clear of each other from 4'0\" to 5'0\", and both marks and both pushed marks drawn", () => {
+    for (let inches = 48; inches <= 60; inches += 2) {
+      for (const wide of [16, 18, 20]) {
+        const outline = { ...fields.outline, length: inchesToMm(inches), widePointWidth: inchesToMm(wide) };
+        const input = railsGuideInputFromFields({ ...fields, outline });
+        for (const system of UNITS_SYSTEMS) {
+          const card = buildRailsGuide(input, system).get(ids.noseBlends)!;
           for (const fit of [0.7, 0.79, 1.26]) {
             expect(guideLabelOverlaps(card.figure, fit), `${inches}" x ${wide}" ${system} at ${fit}`).toEqual([]);
           }
+          const b = guideFigureBounds(card.figure);
+          expect(b.x, `${inches}" x ${wide}"`).toBeGreaterThanOrEqual(0);
+          expect(b.x + b.w, `${inches}" x ${wide}"`).toBeLessThanOrEqual(GUIDE_VIEWBOX_WIDTH);
+          expect(b.y + b.h, `${inches}" x ${wide}"`).toBeLessThanOrEqual(card.figure.height);
+          const all = prims(card.figure);
+          expect(all.filter((p) => p.kind === "line" && p.role === "mark")).toHaveLength(2);
+          const pushed = railsGuideVariants(input, system)[ids.noseBlends];
+          expect(all.filter((p) => p.kind === "line" && p.role === "push")).toHaveLength(pushed ? 2 : 0);
         }
+      }
+    }
+  });
+
+  it("with a stored pair, on every preset, stays in its box in both systems and reads the pair as stored", () => {
+    for (const preset of PRESETS) {
+      const input = guideRailsInput(preset, (r) => ({ ...r, noseRailBlendsFrom: inchesToMm(18), noseRailEndsAt: inchesToMm(30) }));
+      for (const system of UNITS_SYSTEMS) {
+        const card = buildRailsGuide(input, system).get(ids.noseBlends)!;
+        expect(card.tag.text).toBe(`${formatDim(inchesToMm(18), system)} · ${formatDim(inchesToMm(30), system)}`);
+        for (const fit of [0.7, 0.79, 1.26]) expect(guideLabelOverlaps(card.figure, fit), `${preset} ${system} at ${fit}`).toEqual([]);
+        const b = guideFigureBounds(card.figure);
+        expect(b.x).toBeGreaterThanOrEqual(0);
+        expect(b.x + b.w).toBeLessThanOrEqual(GUIDE_VIEWBOX_WIDTH);
       }
     }
   });

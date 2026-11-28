@@ -13,7 +13,7 @@ import { guideView } from "./guide-view";
 import { RAILS_GUIDE_GROUPS, RAILS_GUIDE_INTRO, RAILS_GUIDE_WORDS } from "./words/rails";
 
 /**
- * RAILS' GUIDE (Phase 18): seventeen cards about the page's controls, each drawn from the rails of the board that
+ * RAILS' GUIDE (Phase 18): eighteen cards about the page's controls, each drawn from the rails of the board that
  * is open — the same rails VIEWER draws. It reads the board and never writes it: nothing here calls a store
  * action, so no card can change a board.
  *

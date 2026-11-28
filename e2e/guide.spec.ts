@@ -233,8 +233,8 @@ test.describe("all five GUIDEs on a computer (18-08)", () => {
       // The no-inch rule the Metric test leans on does find the Imperial figures an Imperial shaper reads here.
       expect(GUIDE_IMPERIAL_FIGURE.test(await guide(page).innerText()), `${words.page}: an Imperial GUIDE reads inches`).toBe(true);
     }
-    expect(GUIDE_WORDS).toHaveLength(84);
-    expect(GUIDE_PAGE_WORDS.map((p) => p.cards.length)).toEqual([22, 14, 17, 8, 23]);
+    expect(GUIDE_WORDS).toHaveLength(85);
+    expect(GUIDE_PAGE_WORDS.map((p) => p.cards.length)).toEqual([22, 14, 18, 8, 23]);
     expect(GUIDE_PAGE_WORDS.map((p) => p.cards.filter((c) => c.info !== null).length)).toEqual([0, 0, 0, 0, 14]);
   });
 

@@ -223,7 +223,7 @@ Tabs: VIEWER · PLANING · DATASHEET · GUIDE (a phone: VIEWER · TOP · PLANING
 
 ## RAILS
 
-Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 17 cards.
+Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 18 cards.
 
 *Intro under the GUIDE heading (the board's name filled in):* What each control on this page is, what it does to the rail, and how it is shaped. Every card is your Shortboard's own rail the way VIEWER draws it — the board from above with the three stations, then the cross-section at one of them: the bands in their colours, the finished rail in ink, with the setting pushed in muted dashes. Each rail has the same controls; the cards draw the center's, and the tail's where only the tail has the control.
 
@@ -312,6 +312,11 @@ Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 17 cards.
 - is: Leaves the last bottom tuck as a corner instead of blending it round.
 - does: A crisp line where the tuck meets the bottom releases water sooner — a touch of hard edge along the whole rail.
 - how: Cut the last tuck band but do not round where it meets the flat bottom; a light pass with a block keeps the line straight.
+
+**Nose Rail Blends From · Nose Rail Ends At** · tag on the Shortboard: `12" · 37"` · caption: `dashed · 18" · 37"`
+- is: Where the nose's rail fades into the centre's: it runs as set from the nose to Blends From, fades, and is the centre's rail by Ends At.
+- does: A longer nose rail carries the nose's shape further back down the board; a shorter one hands over to the centre's rail sooner.
+- how: Pencil Blends From and Ends At on the rail from the nose; shape the nose's rail ahead of the first mark and blend it progressively into the centre's rail by the second.
 
 **Tail Rail Blends From · Tail Rail Ends At** · tag on the Shortboard: `12" · 37"` · caption: `dashed · 18" · 37"`  
 - is: Where the tail's hard edge fades into the tucked rail: it runs sharp from the tail to Blends From, fades, and is fully tucked by Ends At.
