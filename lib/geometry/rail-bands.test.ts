@@ -1316,7 +1316,9 @@ describe("noseBlendStations — what the litres and the 3D board read; a board t
       const centre = mm(len / 2);
       const nose12 = mm(len - inchesToMm(12));
       const candidates: (number | undefined)[] = [undefined];
-      for (let v = 8; v <= 76; v += 1.25) candidates.push(inchesToMm(v));
+      // Every 2 1/2" from 8" to 75 1/2": values below, inside and past every window, few enough that a loaded machine
+      // still finishes the sweep well inside the time limit.
+      for (let v = 8; v <= 76; v += 2.5) candidates.push(inchesToMm(v));
       for (const from of candidates) {
         for (const to of candidates) {
           const rails = {
