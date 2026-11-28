@@ -10,7 +10,7 @@ import type { GuideWordsCard, GuideWordsGroup } from "../guide-copy";
 
 /** The intro under the GUIDE heading; `{board}` is the open board's name (the page's *Shortboard*). */
 export const RAILS_GUIDE_INTRO =
-  "What each control on this page is, what it does to the rail, and how it is shaped. Every card is your {board}'s own rail the way VIEWER draws it — the board from above with the three stations, then the cross-section at one of them: the bands in their colours, the finished rail in ink, with the setting pushed in muted dashes. Each rail has the same controls; the cards draw the center's, and the tail's where only the tail has the control.";
+  "What each control on this page is, what it does to the rail, and how it is shaped. Every card is your {board}'s own rail the way VIEWER draws it — the board from above with the three stations, then the cross-section at one of them: the bands in their colours, the finished rail in ink, with the setting pushed in muted dashes. Each rail has the same controls; the cards draw the center's, the tail's for the controls the center does not have, and the nose's for its own blend.";
 
 const INPUTS = "Inputs";
 const RAILS = "Nose Rail · Center Rail · Tail Rail";

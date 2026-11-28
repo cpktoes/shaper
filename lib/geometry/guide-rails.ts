@@ -3,7 +3,7 @@
  * UI-SPEC §4, "Figures: Rule 2, card by card").
  *
  * Every rail has the same controls, so one card stands for all three (D-04): it draws the centre's rail, and the
- * tail's where only the tail has the control (Hard Edge, Scaled from center by, Tail Rail Blends From · Ends At).
+ * tail's for the controls the centre does not have (Hard Edge, Scaled from center by, Tail Rail Blends From · Ends At).
  * A card is the board from above with its three stations — the one it cuts drawn dash-dot — then the
  * cross-section at that station as VIEWER draws it: the bands in the page's own colours, keyed by their
  * `RailSegmentKey`, the apex centre, the finished rail in ink, and the one setting pushed in muted dashes. Tail

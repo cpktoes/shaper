@@ -225,7 +225,7 @@ Tabs: VIEWER · PLANING · DATASHEET · GUIDE (a phone: VIEWER · TOP · PLANING
 
 Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 18 cards.
 
-*Intro under the GUIDE heading (the board's name filled in):* What each control on this page is, what it does to the rail, and how it is shaped. Every card is your Shortboard's own rail the way VIEWER draws it — the board from above with the three stations, then the cross-section at one of them: the bands in their colours, the finished rail in ink, with the setting pushed in muted dashes. Each rail has the same controls; the cards draw the center's, and the tail's where only the tail has the control.
+*Intro under the GUIDE heading (the board's name filled in):* What each control on this page is, what it does to the rail, and how it is shaped. Every card is your Shortboard's own rail the way VIEWER draws it — the board from above with the three stations, then the cross-section at one of them: the bands in their colours, the finished rail in ink, with the setting pushed in muted dashes. Each rail has the same controls; the cards draw the center's, the tail's for the controls the center does not have, and the nose's for its own blend.
 
 ### Inputs
 
