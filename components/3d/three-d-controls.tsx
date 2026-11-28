@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode, type RefObject } from "react";
 import { useDesign } from "@/components/design/design-store";
-import { SliderRow } from "@/components/design/slider-row";
+import { BlendSliderRow } from "@/components/design/blend-slider-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import {
@@ -117,7 +117,8 @@ export function ThreeDSectionHeading({ children }: { children: ReactNode }) {
  * row reads it, VOLUME's litres follow and the 3D board redraws; move it on RAILS and this row follows.
  *
  * Since D-32 the two rows bound the tail's whole rail character — Hard Edge, Family, Symmetrical, Single Tuck and
- * Sharp Bottom Tuck — so they are always live, Hard Edge ticked or not, with no reason line. They change the board,
+ * Sharp Bottom Tuck — so they are live Hard Edge ticked or not. One of the two is greyed, with a line saying which
+ * slider to move, only while it has nowhere to go (`BlendSliderRow`, fast 221). They change the board,
  * so a locked board greys them as it greys RAILS' rows (`SliderRow` reads the lock itself) — unlike VIEW, which
  * only changes what is seen. Under D-32 the nose had no row here or anywhere; since the founder's reversal of
  * 2026-11-27 (quick 261127-kkw) it has its own two, `ThreeDNoseRail`, drawn above these.
@@ -134,23 +135,21 @@ export function ThreeDTailRail() {
   const endsText = formatHardEdgeEndsAt(endsAt, system);
   return (
     <div className="flex flex-col gap-2" data-three-d-tail-rail>
-      <SliderRow
+      <BlendSliderRow
+        which="blendsFrom"
+        tip="tail"
         label={`${THREE_D_COPY.tailRailBlendsFrom} — ${fromText}`}
-        value={fromSlider.value}
-        min={fromSlider.min}
-        max={fromSlider.max}
-        step={fromSlider.step}
-        onValueChange={(v) => setTailHardEdgeBlendsFrom(fromSlider.toMm(v))}
+        view={fromSlider}
+        onChange={setTailHardEdgeBlendsFrom}
         sliderLabel={THREE_D_COPY.tailRailBlendsFromSlider}
         sliderValueText={THREE_D_COPY.tailRailFromTheTail(fromText)}
       />
-      <SliderRow
+      <BlendSliderRow
+        which="endsAt"
+        tip="tail"
         label={`${THREE_D_COPY.tailRailEndsAt} — ${endsText}`}
-        value={endsSlider.value}
-        min={endsSlider.min}
-        max={endsSlider.max}
-        step={endsSlider.step}
-        onValueChange={(v) => setTailHardEdgeEndsAt(endsSlider.toMm(v))}
+        view={endsSlider}
+        onChange={setTailHardEdgeEndsAt}
         sliderLabel={THREE_D_COPY.tailRailEndsAtSlider}
         sliderValueText={THREE_D_COPY.tailRailFromTheTail(endsText)}
       />
@@ -164,7 +163,7 @@ export function ThreeDTailRail() {
  * Blends From, then Nose Rail Ends At, each measured from the nose — reading and writing the very same two values on
  * the board through the very same readers, slider ranges and setters. One value, not two kept in step: move either
  * here and RAILS' row reads it, VOLUME's litres follow and the 3D board redraws; move it on RAILS and this row
- * follows. Always live, as the tail's are; a locked board greys them (`SliderRow` reads the lock itself). On a board
+ * follows. Live as the tail's are, and greyed with the same line while one has nowhere to go; a locked board greys them (`SliderRow` reads the lock itself). On a board
  * that has never moved them they show 12" and the top of Ends At's slider, and the board is cut as it always was.
  * The group carries its own data attribute, so anything scoped to the tail's group still finds exactly two sliders.
  */
@@ -180,23 +179,21 @@ export function ThreeDNoseRail() {
   const endsText = formatHardEdgeEndsAt(endsAt, system);
   return (
     <div className="flex flex-col gap-2" data-three-d-nose-rail>
-      <SliderRow
+      <BlendSliderRow
+        which="blendsFrom"
+        tip="nose"
         label={`${THREE_D_COPY.noseRailBlendsFrom} — ${fromText}`}
-        value={fromSlider.value}
-        min={fromSlider.min}
-        max={fromSlider.max}
-        step={fromSlider.step}
-        onValueChange={(v) => setNoseRailBlendsFrom(fromSlider.toMm(v))}
+        view={fromSlider}
+        onChange={setNoseRailBlendsFrom}
         sliderLabel={THREE_D_COPY.noseRailBlendsFromSlider}
         sliderValueText={THREE_D_COPY.noseRailFromTheNose(fromText)}
       />
-      <SliderRow
+      <BlendSliderRow
+        which="endsAt"
+        tip="nose"
         label={`${THREE_D_COPY.noseRailEndsAt} — ${endsText}`}
-        value={endsSlider.value}
-        min={endsSlider.min}
-        max={endsSlider.max}
-        step={endsSlider.step}
-        onValueChange={(v) => setNoseRailEndsAt(endsSlider.toMm(v))}
+        view={endsSlider}
+        onChange={setNoseRailEndsAt}
         sliderLabel={THREE_D_COPY.noseRailEndsAtSlider}
         sliderValueText={THREE_D_COPY.noseRailFromTheNose(endsText)}
       />

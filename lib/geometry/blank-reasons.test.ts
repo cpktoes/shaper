@@ -52,6 +52,7 @@ import {
   formatMark,
   formatSignedMark,
   measureSlider,
+  sliderTrack,
   stationLabel,
 } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
@@ -1266,6 +1267,27 @@ describe("Hard Edge Blends From and Ends At — dims, and their coupled sliders 
       const starts = hardEdgeBlendsFromSlider(inchesToMm(startMinIn), inchesToMm(toIn), length, "imperial");
       expect(starts.max).toBeLessThanOrEqual(toIn - gapIn);
       expect(starts.max).toBeLessThanOrEqual(startMaxIn);
+    }
+  });
+
+  it("a slider with nowhere to go is pinned (fast 221): Blends From while Ends At sits 2\" past 12\", Ends At on a 4'0\" board while Blends From sits 2\" short of the centre", () => {
+    for (const system of systems) {
+      // The stock length: Ends At at its lowest leaves Blends From one point, 12"; Ends At itself still has room.
+      const from = sliderTrack(hardEdgeBlendsFromSlider(inchesToMm(12), inchesToMm(14), length, system), "start");
+      expect(from.pinned).toBe(true);
+      expect(from.value).toBe(from.min);
+      expect(from.max).toBeGreaterThan(from.min);
+      expect(sliderTrack(hardEdgeEndsAtSlider(inchesToMm(14), inchesToMm(12), length, system), "end").pinned).toBe(false);
+      // At the defaults (12" and the centre) both have room.
+      expect(sliderTrack(hardEdgeBlendsFromSlider(inchesToMm(12), inchesToMm(centreIn), length, system), "start").pinned).toBe(false);
+      expect(sliderTrack(hardEdgeEndsAtSlider(inchesToMm(centreIn), inchesToMm(12), length, system), "end").pinned).toBe(false);
+      // A 4'0" board, centre 24": Blends From at its top, 22", leaves Ends At one point, the centre.
+      const short = inchesToMm(48);
+      const ends = sliderTrack(hardEdgeEndsAtSlider(inchesToMm(24), inchesToMm(22), short, system), "end");
+      expect(ends.pinned).toBe(true);
+      expect(ends.value).toBe(ends.max);
+      expect(ends.min).toBeLessThan(ends.max);
+      expect(sliderTrack(hardEdgeBlendsFromSlider(inchesToMm(22), inchesToMm(24), short, system), "start").pinned).toBe(false);
     }
   });
 

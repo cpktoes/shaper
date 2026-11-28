@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
+import { BLEND_PINNED_HINT } from "../components/design/blend-pinned-copy";
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
 import { hardEdgeBlendsFromSlider } from "../lib/geometry/blank-reasons";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
@@ -639,5 +640,104 @@ test.describe("the 3D page's Rail Blend Controls show the nose's two rows above 
     await expect(threeDBlendsFromSlider(page)).toBeDisabled({ timeout: 30_000 });
     await expect(threeDEndsAtSlider(page)).toBeDisabled();
     for (const label of [from, ends]) await expect(label.locator("xpath=..")).toHaveClass(/opacity-40/);
+  });
+});
+
+/** True when a slider is drawn on a real track, its top above its bottom, so its handle shows. */
+async function drawnWithAHandle(slider: Locator): Promise<boolean> {
+  return slider.evaluate((el) => Number((el as HTMLInputElement).max) > Number((el as HTMLInputElement).min));
+}
+
+test.describe("a blend slider with nowhere to go is greyed and says why, nose and tail (fast 221)", () => {
+  test("11. on RAILS, Ends At at its lowest greys Blends From, handle drawn, with a line under it at full strength; Ends At moved out brings it back — the nose's pair, then the tail's", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000);
+    await openRails(page);
+    const { nose } = await noseAdvanced(page, testInfo);
+    const noseHint = nose.locator("[data-blend-pinned-hint]");
+    await expect(noseHint).toHaveCount(0);
+    await expect(blendsFromSlider(page)).toBeEnabled();
+
+    await endsAtSlider(page).press("Home");
+    await expect(endsAtLabel(nose)).toHaveText(`Nose Rail Ends At — ${inches(14)}`);
+    await expect(blendsFromSlider(page)).toBeDisabled();
+    await expect(blendsFromLabel(nose).locator("xpath=..")).toHaveClass(/opacity-40/);
+    await expect(noseHint).toHaveText(BLEND_PINNED_HINT.blendsFrom("nose"));
+    expect(await noseHint.evaluate((el) => el.closest(".opacity-40") === null)).toBe(true);
+    expect(await drawnWithAHandle(blendsFromSlider(page))).toBe(true);
+    // Nothing is written for the greyed slider, its figure is the one it had, and Ends At stays live.
+    await expect(blendsFromLabel(nose)).toHaveText(`Nose Rail Blends From — ${STOCK_START}`);
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${STOCK_START} from the nose`);
+    await expect.poll(() => keptNoseRail(page, "noseRailEndsAt")).toBe(inchesToMm(14));
+    expect(await keptNoseRail(page, "noseRailBlendsFrom")).toBe("absent");
+    await expect(endsAtSlider(page)).toBeEnabled();
+
+    await endsAtSlider(page).press("PageUp");
+    await expect(noseHint).toHaveCount(0);
+    await expect(blendsFromSlider(page)).toBeEnabled();
+    await expect(blendsFromLabel(nose).locator("xpath=..")).not.toHaveClass(/opacity-40/);
+
+    // The tail's pair, the same way.
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    const tailHint = tail.locator("[data-blend-pinned-hint]");
+    await expect(tailHint).toHaveCount(0);
+    await tailEndsAtSlider(page).press("Home");
+    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`Tail Rail Ends At — ${inches(14)}`);
+    await expect(tailBlendsFromSlider(page)).toBeDisabled();
+    await expect(tailHint).toHaveText(BLEND_PINNED_HINT.blendsFrom("tail"));
+    expect(await tailHint.evaluate((el) => el.closest(".opacity-40") === null)).toBe(true);
+    expect(await drawnWithAHandle(tailBlendsFromSlider(page))).toBe(true);
+    await expect(tailEndsAtSlider(page)).toBeEnabled();
+    await tailEndsAtSlider(page).press("End");
+    await expect(tailHint).toHaveCount(0);
+    await expect(tailBlendsFromSlider(page)).toBeEnabled();
+  });
+
+  test("12. a locked board whose Ends At sits at its lowest greys both rows for the lock and shows no line", async ({ page }, testInfo) => {
+    const fields = stockBoardFields();
+    await keepOpenBoard(page, { ...fields, rails: { ...fields.rails, noseRailEndsAt: inchesToMm(14) } }, true);
+    await openRails(page);
+    await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true })).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    const { nose } = await noseAdvanced(page, testInfo);
+    await expect(endsAtLabel(nose)).toHaveText(`Nose Rail Ends At — ${inches(14)}`);
+    await expect(blendsFromSlider(page)).toBeDisabled();
+    await expect(endsAtSlider(page)).toBeDisabled();
+    await expect(nose.locator("[data-blend-pinned-hint]")).toHaveCount(0);
+  });
+
+  test("13. on the 3D page the same: the nose's and the tail's Blends From grey with their lines while Ends At sits at its lowest", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a computer and one phone prove the shared rows");
+    test.setTimeout(240_000);
+    await dismissStrips(page);
+    await keepOpenBoard(page, stockBoardFields(), false);
+    await openThreeD(page);
+    const noseGroup = threeDNoseRail(page);
+    const tailGroup = threeDTailRail(page);
+    const tailFrom = tailGroup.getByRole("slider", { name: THREE_D_COPY.tailRailBlendsFromSlider, exact: true });
+    const tailEnds = tailGroup.getByRole("slider", { name: THREE_D_COPY.tailRailEndsAtSlider, exact: true });
+    await expect(page.locator("[data-blend-pinned-hint]")).toHaveCount(0);
+
+    await threeDEndsAtSlider(page).press("Home");
+    await expect(threeDBlendsFromSlider(page)).toBeDisabled();
+    await expect(noseGroup.locator("[data-blend-pinned-hint]")).toHaveText(BLEND_PINNED_HINT.blendsFrom("nose"));
+    expect(await drawnWithAHandle(threeDBlendsFromSlider(page))).toBe(true);
+    await expect(tailGroup.locator("[data-blend-pinned-hint]")).toHaveCount(0);
+
+    await tailEnds.press("Home");
+    await expect(tailFrom).toBeDisabled();
+    await expect(tailGroup.locator("[data-blend-pinned-hint]")).toHaveText(BLEND_PINNED_HINT.blendsFrom("tail"));
+    expect(await drawnWithAHandle(tailFrom)).toBe(true);
+
+    await threeDEndsAtSlider(page).press("End");
+    await tailEnds.press("End");
+    await expect(page.locator("[data-blend-pinned-hint]")).toHaveCount(0);
+    await expect(threeDBlendsFromSlider(page)).toBeEnabled();
+    await expect(tailFrom).toBeEnabled();
   });
 });

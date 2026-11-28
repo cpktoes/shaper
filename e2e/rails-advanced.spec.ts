@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { BLEND_PINNED_HINT } from "../components/design/blend-pinned-copy";
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
@@ -951,11 +952,13 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const rows = await advancedRows(body);
     expect(rows.at(-5)).toBe("Sharp Bottom Tuck");
     expect(rows.at(-4)).toBe("These controls are invisible here and corresponding controls with visual verification are found on the 3D page.");
-    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(12)}`);
+    // With Ends At at its floor, 2" past a Blends From at its own floor, Blends From has nowhere to go: its row is
+    // greyed and carries the line that says which slider to move (fast 221). The two sliders are both checked live
+    // below, once Ends At has moved back up.
+    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(12)}${BLEND_PINNED_HINT.blendsFrom("tail")}`);
     expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${inches(14)}`);
     expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
-    // (With Ends At at its floor, 2" past a Blends From at its own floor, Blends From has nowhere to go and its dot is
-    // not drawn; the two sliders are both checked live below, once Ends At has moved back up.)
+    await expect(blendsFromSlider(page)).toBeDisabled();
     await expect(endsAtSlider(page)).toBeEnabled();
 
     // The tail's Sharp Bottom Tuck and Use Single Tuck ticked (a Sharp Bottom Tuck alone keeps under a
@@ -1161,7 +1164,12 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const railsAfter = await pageLines(page);
     const railsChanged = changedLines(railsBefore, railsAfter);
     expect(railsChanged.length).toBeGreaterThan(0);
-    for (const line of railsChanged) expect(line).toMatch(/^Tail Rail Ends At — [\d ./]+"$/);
+    // The label, and — because Ends At at its lowest leaves Blends From nowhere to go — the one line that says why
+    // that slider went grey (fast 221). Nothing says what the move does to the board.
+    const pinnedLine = BLEND_PINNED_HINT.blendsFrom("tail");
+    for (const line of railsChanged) {
+      if (line !== pinnedLine) expect(line).toMatch(/^Tail Rail Ends At — [\d ./]+"$/);
+    }
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);

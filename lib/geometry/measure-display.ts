@@ -418,6 +418,34 @@ export function measureSlider(
   };
 }
 
+/** How a slider's track is drawn: as its view says, or — with nowhere to go — pinned at one end of a one-step track. */
+export interface SliderTrack {
+  /** True when the view's range is a single point: the slider has nowhere to go. */
+  pinned: boolean;
+  value: number;
+  min: number;
+  max: number;
+}
+
+/**
+ * What to draw a slider with when its range may have closed to a single point (fast 221, the founder 2026-11-27:
+ * "grey out the slider with no handle, both nose and tail"). A tip rail's Blends From has nowhere to go while its
+ * Ends At sits 2" past it, and on a short board Ends At has nowhere to go while Blends From sits 2" short of the
+ * centre; a slider given `min === max` draws a bare track with no handle. So a pinned slider is drawn on a track one
+ * step long with its handle at the end it rests at — `"start"` for a value held at the bottom of its range, `"end"`
+ * for one held at the top — for the caller to grey and explain. A view with room is handed back as it came, so a
+ * slider that can move is drawn exactly as before. Display only: nothing here is ever written to a board.
+ */
+export function sliderTrack(
+  view: Pick<MeasureSliderView, "value" | "min" | "max" | "step">,
+  restsAt: "start" | "end",
+): SliderTrack {
+  if (view.max > view.min) return { pinned: false, value: view.value, min: view.min, max: view.max };
+  return restsAt === "start"
+    ? { pinned: true, value: view.min, min: view.min, max: view.min + view.step }
+    : { pinned: true, value: view.max, min: view.max - view.step, max: view.max };
+}
+
 /**
  * Bridges `measureSlider`'s SLIDER-domain bounds (always millimetres in Metric) to
  * `commitTypedMeasure`'s FIELD-domain bounds (millimetres for `"mark"`, but centimetres for

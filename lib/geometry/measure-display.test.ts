@@ -21,6 +21,7 @@ import {
   formatSignedMark,
   formatWholePasses,
   measureSlider,
+  sliderTrack,
   planerPasses,
   stationLabel,
   diamondDepthClampNote,
@@ -1137,5 +1138,19 @@ describe("wholePasses / formatWholePasses — full passes plus what is left (qui
         }
       }
     }
+  });
+});
+
+describe("sliderTrack (fast 221: a slider with nowhere to go)", () => {
+  it("hands a view with room back as it came", () => {
+    expect(sliderTrack({ value: 18, min: 12, max: 30, step: 0.5 }, "start")).toEqual({ pinned: false, value: 18, min: 12, max: 30 });
+    expect(sliderTrack({ value: 18, min: 12, max: 30, step: 0.5 }, "end")).toEqual({ pinned: false, value: 18, min: 12, max: 30 });
+  });
+
+  it("draws a one-point range on a track one step long, the handle at the end it rests at", () => {
+    expect(sliderTrack({ value: 12, min: 12, max: 12, step: 0.5 }, "start")).toEqual({ pinned: true, value: 12, min: 12, max: 12.5 });
+    expect(sliderTrack({ value: 24, min: 24, max: 24, step: 0.5 }, "end")).toEqual({ pinned: true, value: 24, min: 23.5, max: 24 });
+    // Metric's 10 mm step, the same rule.
+    expect(sliderTrack({ value: 310, min: 310, max: 310, step: 10 }, "start")).toEqual({ pinned: true, value: 310, min: 310, max: 320 });
   });
 });

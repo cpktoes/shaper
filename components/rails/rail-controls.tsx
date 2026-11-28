@@ -36,6 +36,8 @@ import { mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import { cn } from "@/lib/utils";
+import type { BlendTip } from "@/components/design/blend-pinned-copy";
+import { BlendSliderRow } from "@/components/design/blend-slider-row";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 
@@ -301,7 +303,7 @@ function RailSectionControls({
    * them says so, because nothing on this page shows what they do (the founder, 2026-11-06). */
   const blendRows = (tip: {
     title: string;
-    spokenTip: string;
+    spokenTip: BlendTip;
     blendsFrom: Mm;
     endsAt: Mm;
     onChangeBlendsFrom?: (value: Mm) => void;
@@ -315,23 +317,21 @@ function RailSectionControls({
     return (
       <>
         <div className="text-xs text-surf-ink-muted font-normal">{BLEND_ROWS_NOTE}</div>
-        <SliderRow
+        <BlendSliderRow
+          which="blendsFrom"
+          tip={tip.spokenTip}
           label={`${tip.title} Blends From — ${fromText}`}
-          value={fromSlider.value}
-          min={fromSlider.min}
-          max={fromSlider.max}
-          step={fromSlider.step}
-          onValueChange={(v) => tip.onChangeBlendsFrom?.(fromSlider.toMm(v))}
+          view={fromSlider}
+          onChange={tip.onChangeBlendsFrom}
           sliderLabel={`${tip.title} blends from`}
           sliderValueText={`${fromText} from the ${tip.spokenTip}`}
         />
-        <SliderRow
+        <BlendSliderRow
+          which="endsAt"
+          tip={tip.spokenTip}
           label={`${tip.title} Ends At — ${endsText}`}
-          value={endsSlider.value}
-          min={endsSlider.min}
-          max={endsSlider.max}
-          step={endsSlider.step}
-          onValueChange={(v) => tip.onChangeEndsAt?.(endsSlider.toMm(v))}
+          view={endsSlider}
+          onChange={tip.onChangeEndsAt}
           sliderLabel={`${tip.title} ends at`}
           sliderValueText={`${endsText} from the ${tip.spokenTip}`}
         />
