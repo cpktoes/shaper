@@ -15,6 +15,7 @@ import {
   boardSectionsWith,
   computeCrossSectionVolume,
   computeVolume,
+  crossSectionStations,
   CUBIC_INCHES_PER_LITRE,
   HARD_EDGE_FADE,
   fadingSectionArea,
@@ -77,6 +78,8 @@ import {
   effectiveDeckPercent,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
+  noseBlendsFrom,
+  noseEndsAt,
   ZERO_RAIL_NUDGES,
   type RailBandSpec,
   type RailFamily,
@@ -101,6 +104,7 @@ import {
   phase16SurfaceBoards,
   phase16WingBoards,
 } from "./__fixtures__/phase16-boards";
+import { NOSE_BLEND_SWEEP_LENGTHS_IN, noseBlendSweepBoards } from "./__fixtures__/nose-blend-boards";
 import { outlineWithoutWings, wingFootprint, wingShareAt, wingShareSpan, type Wing } from "./wings";
 import {
   designBottomBoard,
@@ -1501,6 +1505,191 @@ describe("D-32 the whole rail character blends", () => {
       if (board.label.startsWith("tucked|")) expect(any, board.label).toBe(true);
     }
     expect(Object.keys(PHASE16_TUCKED)).toHaveLength(6);
+  });
+});
+
+describe("the nose rail's blend reads its two settings, and a board that stores neither reads the fixed rule it always had (quick 261127-kkw, D-01, D-02, D-08)", () => {
+  // The founder, 2026-11-27: "I think we need to add a center to nose rail blend control like we did for the tail."
+  // Every expected figure is the app's own (Rule 1).
+  const SWEEP = noseBlendSweepBoards();
+  const sweep = (label: string): DesignSummaryFields => {
+    const board = SWEEP.find((b) => b.label === label);
+    if (!board) throw new Error(`no board ${label}`);
+    return board.fields;
+  };
+  const preset = (label: string): DesignSummaryFields => {
+    const board = phase16LiveBoards().find((b) => b.label === label);
+    if (!board) throw new Error(`no board ${label}`);
+    return board.fields;
+  };
+  /** The cross-section input `summarizeDesign` builds for a stored board, with its three rail stations. */
+  const designInput = (fields: DesignSummaryFields) => {
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const input = designCrossSectionInput(buildOutline(fields.outline), profile, rails, fields.outline.length);
+    const points = foilStationPoints(input.foil, input.length);
+    const anchors = { tail: points[1].station, center: points[2].station, nose: points[3].station };
+    return { input, anchors, rails, length: input.length };
+  };
+  const withNose = (fields: DesignSummaryFields, pair: { from?: unknown; to?: unknown }): DesignSummaryFields => ({
+    ...fields,
+    rails: {
+      ...fields.rails,
+      ...("from" in pair ? { noseRailBlendsFrom: pair.from as Mm } : {}),
+      ...("to" in pair ? { noseRailEndsAt: pair.to as Mm } : {}),
+    },
+  });
+  const litres = (fields: DesignSummaryFields) => summarizeDesign(fields).volumeLitres;
+  const liveWeight = (fields: DesignSummaryFields, station: Mm) => {
+    const { anchors, rails, length } = designInput(fields);
+    return SMOOTH_SURFACE_FADE.at(station, "nose", anchors, rails, length).tipWeight;
+  };
+  const symmetrical72 = sweep("sweep|72|symmetrical");
+  const GARBAGE: unknown[] = [Number.NaN, Infinity, -Infinity, 1e9, -inchesToMm(18), "18", null, { inches: 18 }];
+
+  it("a board with neither key: the nose's weight at every litres station and on a fine sweep is noseRailWeight between the centre and the nose 12\" station, exactly", () => {
+    const boards = [
+      preset("shortboard|asis|hard"),
+      preset("fish|asis|hard"),
+      preset("tucked|shortboard|nose-sbt"),
+      preset("tucked|fish|nose-single"),
+      sweep("sweep|73.875|symmetrical"),
+      sweep("sweep|48|knifey"),
+      sweep("sweep|144|boxy"),
+    ];
+    let differing = 0;
+    for (const fields of boards) {
+      const { input, anchors, rails, length } = designInput(fields);
+      const noseDiffers = railCharacterDifferences(rails, "nose").length > 0;
+      if (noseDiffers) differing += 1;
+      const stations = [
+        ...crossSectionStations(length, input.cutStation ?? mm(0)),
+        ...Array.from({ length: 2001 }, (_, i) => mm(anchors.center + (i / 2000) * (length - anchors.center))),
+        anchors.center,
+        anchors.nose,
+      ].filter((station) => station > anchors.center);
+      for (const station of stations) {
+        const expected = noseDiffers ? noseRailWeight(station, anchors.center, anchors.nose) : 0;
+        expect(SMOOTH_SURFACE_FADE.at(station, "nose", anchors, rails, length).tipWeight).toBe(expected);
+      }
+    }
+    expect(differing).toBeGreaterThanOrEqual(5);
+  });
+
+  it("with 18\" and 30\" stored the nose's rail is full at and ahead of 18\" from the nose, gone at and behind 30\", a half midway, and never falls toward the nose", () => {
+    const from = inchesToMm(18);
+    const to = inchesToMm(30);
+    const fields = withNose(symmetrical72, { from, to });
+    const { length } = designInput(fields);
+    const fullFrom = mm(length - from);
+    const goneAt = mm(length - to);
+    expect(liveWeight(fields, fullFrom)).toBe(1);
+    expect(liveWeight(fields, mm(fullFrom + 1))).toBe(1);
+    expect(liveWeight(fields, length)).toBe(1);
+    expect(liveWeight(fields, goneAt)).toBe(0);
+    expect(liveWeight(fields, mm(goneAt - 1))).toBe(0);
+    expect(liveWeight(fields, mm((fullFrom + goneAt) / 2))).toBeCloseTo(0.5, 12);
+    let last = -Infinity;
+    for (let i = 0; i <= 4000; i++) {
+      const station = mm(length / 2 + (i / 4000) * (length / 2));
+      const w = liveWeight(fields, station);
+      expect(w).toBeGreaterThanOrEqual(last);
+      expect(w).toBeGreaterThanOrEqual(0);
+      expect(w).toBeLessThanOrEqual(1);
+      // The tail's own curve, read from the other tip.
+      expect(Math.abs(w - tailHardEdgeWeight(mm(length - station), from, to))).toBeLessThan(1e-12);
+      last = w;
+    }
+  });
+
+  it("the station area has no step at Blends From nor at Ends At", () => {
+    const step = 1e-4;
+    const from = inchesToMm(18);
+    const to = inchesToMm(30);
+    const fields = withNose(symmetrical72, { from, to });
+    const { input, length } = designInput(fields);
+    for (const [a, b] of [
+      [length - from - step, length - from],
+      [length - to, length - to + step],
+    ] as const) {
+      const [left, right] = boardSections(input, [mm(a), mm(b)]);
+      expect(Math.abs(left.area - right.area), `across ${a.toFixed(4)} mm`).toBeLessThan(1e-6 * left.area);
+    }
+  });
+
+  it("RAILS' nose station is always the full nose rail: Blends From never goes below the 12\" mark", () => {
+    const { anchors } = designInput(symmetrical72);
+    for (let fromIn = HARD_EDGE_BLENDS_FROM_RANGE_IN.min; fromIn <= HARD_EDGE_BLENDS_FROM_RANGE_IN.max; fromIn += 0.5) {
+      expect(liveWeight(withNose(symmetrical72, { from: inchesToMm(fromIn) }), anchors.nose), `${fromIn}"`).toBe(1);
+    }
+    for (const stored of [inchesToMm(6), inchesToMm(11.5), ...GARBAGE]) {
+      expect(liveWeight(withNose(symmetrical72, { from: stored }), anchors.nose), String(stored)).toBe(1);
+    }
+  });
+
+  it("where the nose's rail is the centre's, no stored pair moves the litres by a bit (D-08)", () => {
+    const stock = preset("stock|hard");
+    expect(railCharacterDifferences(stock.rails, "nose")).toEqual([]);
+    const untouched = litres(stock);
+    for (const [fromIn, toIn] of [
+      [12, 14],
+      [18, 30],
+      [30, 36],
+      [20.5, 33],
+    ]) {
+      expect(litres(withNose(stock, { from: inchesToMm(fromIn), to: inchesToMm(toIn) })), `${fromIn}/${toIn}`).toBe(untouched);
+    }
+  });
+
+  it("where the nose's rail differs, Ends At at 14\" changes the litres, and so does Blends From at 30\"", () => {
+    expect(railCharacterDifferences(symmetrical72.rails, "nose")).not.toEqual([]);
+    const untouched = litres(symmetrical72);
+    const short = litres(withNose(symmetrical72, { to: inchesToMm(14) }));
+    const long = litres(withNose(symmetrical72, { from: inchesToMm(30) }));
+    expect(short).not.toBe(untouched);
+    expect(long).not.toBe(untouched);
+    // A shorter nose rail and a longer one move the litres opposite ways.
+    expect(Math.sign(short - untouched)).toBe(-Math.sign(long - untouched));
+  });
+
+  it("plan 16-15's rule, by name, keeps the fixed nose blend whatever a board stores", () => {
+    const named = (fields: DesignSummaryFields) =>
+      summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
+    for (const fields of [symmetrical72, preset("tucked|shortboard|nose-sbt"), sweep("sweep|108|knifey")]) {
+      const untouched = named(fields);
+      expect(named(withNose(fields, { from: inchesToMm(18), to: inchesToMm(30) }))).toBe(untouched);
+      expect(named(withNose(fields, { to: inchesToMm(14) }))).toBe(untouched);
+      // ...while the live rule reads the pair.
+      expect(litres(withNose(fields, { to: inchesToMm(14) }))).not.toBe(litres(fields));
+    }
+  });
+
+  it("garbage reads as the untouched board; a pair that crosses reads its Blends From alone, the blend ending at the centre", () => {
+    const untouched = litres(symmetrical72);
+    for (const stored of GARBAGE) {
+      expect(litres(withNose(symmetrical72, { from: stored })), `from ${String(stored)}`).toBe(untouched);
+      expect(litres(withNose(symmetrical72, { to: stored })), `to ${String(stored)}`).toBe(untouched);
+      expect(litres(withNose(symmetrical72, { from: stored, to: stored })), `both ${String(stored)}`).toBe(untouched);
+    }
+    // Outside every window: a start past 30" with an end before 14".
+    expect(litres(withNose(symmetrical72, { from: inchesToMm(40), to: inchesToMm(10) }))).toBe(untouched);
+    // A pair that crosses: the start is kept, the end is refused and reads the centre.
+    const crossing = litres(withNose(symmetrical72, { from: inchesToMm(26), to: inchesToMm(20) }));
+    expect(crossing).toBe(litres(withNose(symmetrical72, { from: inchesToMm(26) })));
+    expect(crossing).not.toBe(untouched);
+  });
+
+  it("on a board whose centre is on the 1/2\" grid, dragging each slider away and back to its own end leaves the litres as they were", () => {
+    const onGrid = NOSE_BLEND_SWEEP_LENGTHS_IN.filter((lengthIn) => Number.isInteger(lengthIn));
+    expect(onGrid).toHaveLength(6);
+    for (const lengthIn of onGrid) {
+      for (const nose of ["symmetrical", "knifey"]) {
+        const fields = sweep(`sweep|${lengthIn}|${nose}`);
+        const length = fields.outline.length;
+        const stored = withNose(fields, { from: noseBlendsFrom({}, length), to: noseEndsAt({}, length) });
+        expect(litres(stored), `${lengthIn}" ${nose}`).toBe(litres(fields));
+      }
+    }
   });
 });
 

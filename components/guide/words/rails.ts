@@ -1,8 +1,9 @@
 /**
- * RAILS' GUIDE words (Phase 18, D-09): the intro, the three groups and the seventeen cards, copied character for
+ * RAILS' GUIDE words (Phase 18, D-09): the intro, the three groups and the eighteen cards, copied character for
  * character from `## RAILS` on `18-GUIDE-WORDS.md` — the founder's page, and the source of truth.
  * `rails.test.ts` holds every line here to that page; a correction lands on the page and here in one change.
- * Every sentence is a first draft for the founder's pen.
+ * Every sentence is a first draft for the founder's pen. The eighteenth card, Nose Rail Blends From · Nose Rail Ends
+ * At, came with the nose's own blend sliders (quick 261127-kkw, the founder 2026-11-27); it sits just before the tail's.
  */
 import { guideCardId } from "@/lib/geometry/guide-card";
 import type { GuideWordsCard, GuideWordsGroup } from "../guide-copy";
@@ -105,6 +106,11 @@ export const RAILS_GUIDE_WORDS: readonly GuideWordsCard[] = [
     is: "Leaves the last bottom tuck as a corner instead of blending it round.",
     does: "A crisp line where the tuck meets the bottom releases water sooner — a touch of hard edge along the whole rail.",
     how: "Cut the last tuck band but do not round where it meets the flat bottom; a light pass with a block keeps the line straight.",
+  }),
+  card(ADVANCED, "Nose Rail Blends From · Nose Rail Ends At", {
+    is: "Where the nose's rail fades into the centre's: it runs as set from the nose to Blends From, fades, and is the centre's rail by Ends At.",
+    does: "A longer nose rail carries the nose's shape further back down the board; a shorter one hands over to the centre's rail sooner.",
+    how: "Pencil Blends From and Ends At on the rail from the nose; shape the nose's rail ahead of the first mark and blend it progressively into the centre's rail by the second.",
   }),
   card(ADVANCED, "Tail Rail Blends From · Tail Rail Ends At", {
     is: "Where the tail's hard edge fades into the tucked rail: it runs sharp from the tail to Blends From, fades, and is fully tucked by Ends At.",

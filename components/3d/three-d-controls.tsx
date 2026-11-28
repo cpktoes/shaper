@@ -11,7 +11,7 @@ import {
   hardEdgeBlendsFromSlider,
   hardEdgeEndsAtSlider,
 } from "@/lib/geometry/blank-reasons";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "@/lib/geometry/rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt, noseBlendsFrom, noseEndsAt } from "@/lib/geometry/rail-bands";
 import type { ViewName } from "@/lib/geometry/view-3d";
 import { cn } from "@/lib/utils";
 import { THREE_D_COPY } from "./three-d-copy";
@@ -119,7 +119,8 @@ export function ThreeDSectionHeading({ children }: { children: ReactNode }) {
  * Since D-32 the two rows bound the tail's whole rail character — Hard Edge, Family, Symmetrical, Single Tuck and
  * Sharp Bottom Tuck — so they are always live, Hard Edge ticked or not, with no reason line. They change the board,
  * so a locked board greys them as it greys RAILS' rows (`SliderRow` reads the lock itself) — unlike VIEW, which
- * only changes what is seen. The nose has no row here or anywhere: its blend is automatic.
+ * only changes what is seen. Under D-32 the nose had no row here or anywhere; since the founder's reversal of
+ * 2026-11-27 (quick 261127-kkw) it has its own two, `ThreeDNoseRail`, drawn above these.
  */
 export function ThreeDTailRail() {
   const { effectiveRails, outline, setTailHardEdgeBlendsFrom, setTailHardEdgeEndsAt } = useDesign();
@@ -158,10 +159,57 @@ export function ThreeDTailRail() {
 }
 
 /**
+ * The nose rail's rows (quick 261127-kkw, the founder 2026-11-27: "I think we need to add a center to nose rail blend
+ * control like we did for the tail"), `ThreeDTailRail`'s twin for the other tip: RAILS' own two nose rows — Nose Rail
+ * Blends From, then Nose Rail Ends At, each measured from the nose — reading and writing the very same two values on
+ * the board through the very same readers, slider ranges and setters. One value, not two kept in step: move either
+ * here and RAILS' row reads it, VOLUME's litres follow and the 3D board redraws; move it on RAILS and this row
+ * follows. Always live, as the tail's are; a locked board greys them (`SliderRow` reads the lock itself). On a board
+ * that has never moved them they show 12" and the top of Ends At's slider, and the board is cut as it always was.
+ * The group carries its own data attribute, so anything scoped to the tail's group still finds exactly two sliders.
+ */
+export function ThreeDNoseRail() {
+  const { effectiveRails, outline, setNoseRailBlendsFrom, setNoseRailEndsAt } = useDesign();
+  const { system } = useUnits();
+  const length = outline.length;
+  const blendsFrom = noseBlendsFrom(effectiveRails, length);
+  const endsAt = noseEndsAt(effectiveRails, length);
+  const fromSlider = hardEdgeBlendsFromSlider(blendsFrom, endsAt, length, system);
+  const endsSlider = hardEdgeEndsAtSlider(endsAt, blendsFrom, length, system);
+  const fromText = formatHardEdgeBlendsFrom(blendsFrom, system);
+  const endsText = formatHardEdgeEndsAt(endsAt, system);
+  return (
+    <div className="flex flex-col gap-2" data-three-d-nose-rail>
+      <SliderRow
+        label={`${THREE_D_COPY.noseRailBlendsFrom} — ${fromText}`}
+        value={fromSlider.value}
+        min={fromSlider.min}
+        max={fromSlider.max}
+        step={fromSlider.step}
+        onValueChange={(v) => setNoseRailBlendsFrom(fromSlider.toMm(v))}
+        sliderLabel={THREE_D_COPY.noseRailBlendsFromSlider}
+        sliderValueText={THREE_D_COPY.noseRailFromTheNose(fromText)}
+      />
+      <SliderRow
+        label={`${THREE_D_COPY.noseRailEndsAt} — ${endsText}`}
+        value={endsSlider.value}
+        min={endsSlider.min}
+        max={endsSlider.max}
+        step={endsSlider.step}
+        onValueChange={(v) => setNoseRailEndsAt(endsSlider.toMm(v))}
+        sliderLabel={THREE_D_COPY.noseRailEndsAtSlider}
+        sliderValueText={THREE_D_COPY.noseRailFromTheNose(endsText)}
+      />
+    </div>
+  );
+}
+
+/**
  * Rail Blend Controls (the founder: "The tail rail section should be under a Rail Blend Controls collapsted by default
  * section."): RAILS' Advanced fold's idiom, a ruled heading with its ▾/▸ arrow. Folded until pressed, and open only while
  * the screen is: nothing here is saved. The fold itself only changes what shows, so a locked board keeps it; the rows
- * inside change the board, so a locked board greys those.
+ * inside change the board, so a locked board greys those. The nose's two rows come first, then the tail's two, the
+ * order RAILS' cards run (quick 261127-kkw).
  */
 export function ThreeDRailBlend() {
   const [open, setOpen] = useState(false);
@@ -180,6 +228,7 @@ export function ThreeDRailBlend() {
       {open && (
         <>
           <div className="text-xs text-surf-ink-muted font-normal">{THREE_D_COPY.railBlendNote}</div>
+          <ThreeDNoseRail />
           <ThreeDTailRail />
         </>
       )}

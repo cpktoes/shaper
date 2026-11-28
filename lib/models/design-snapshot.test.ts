@@ -52,6 +52,8 @@ import {
   computeRailBands,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
+  noseBlendsFrom,
+  noseEndsAt,
 } from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_FALLBACK_ROCKER,
@@ -1159,6 +1161,122 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     expect(back).toEqual(fields.rails);
     expect(back.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
     expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(26));
+  });
+});
+
+describe("the nose's Rail Blends From and Ends At ride on the rails, read forgivingly (rule 15, quick 261127-kkw D-06)", () => {
+  const KEYS = ["noseRailBlendsFrom", "noseRailEndsAt"] as const;
+  const wire = () =>
+    JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))) as {
+      version: number;
+      design: { rails: Record<string, unknown> & { noseRailBlendsFrom?: unknown; noseRailEndsAt?: unknown } };
+    };
+  const length = FIXTURES[0].outline.length;
+
+  it("a board saved without either setting opens with no such keys and no such text, and reads 12\" and the top of Ends At's slider (rule 15)", () => {
+    const stored = wire();
+    for (const key of KEYS) expect(key in stored.design.rails).toBe(false);
+    expect(JSON.stringify(stored.design.rails)).not.toContain("noseRail");
+    const opened = parseSnapshot(Object.freeze(stored));
+    for (const key of KEYS) {
+      expect(key in opened.rails).toBe(false);
+      expect(JSON.stringify(opened.rails)).not.toContain(key);
+    }
+    expect(noseBlendsFrom(opened.rails, length)).toBe(defaultTailRailBlendsFrom(length));
+    expect(noseBlendsFrom(opened.rails, length)).toBe(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+    expect(noseEndsAt(opened.rails, length)).toBe(defaultTailRailEndsAt(defaultTailRailBlendsFrom(length), length));
+  });
+
+  it("a stored 20\"/26\" pair is kept exactly (rule 15)", () => {
+    const stored = wire();
+    stored.design.rails.noseRailBlendsFrom = inchesToMm(20);
+    stored.design.rails.noseRailEndsAt = inchesToMm(26);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.noseRailBlendsFrom).toBe(inchesToMm(20));
+    expect(opened.rails.noseRailEndsAt).toBe(inchesToMm(26));
+    expect(noseBlendsFrom(opened.rails, length)).toBe(inchesToMm(20));
+    expect(noseEndsAt(opened.rails, length)).toBe(inchesToMm(26));
+  });
+
+  it("one key alone is kept, and the other reads its default (rule 15)", () => {
+    const onlyEnd = wire();
+    onlyEnd.design.rails.noseRailEndsAt = inchesToMm(22);
+    const openedEnd = parseSnapshot(Object.freeze(onlyEnd));
+    expect("noseRailBlendsFrom" in openedEnd.rails).toBe(false);
+    expect(openedEnd.rails.noseRailEndsAt).toBe(inchesToMm(22));
+    expect(noseBlendsFrom(openedEnd.rails, length)).toBe(defaultTailRailBlendsFrom(length));
+    expect(noseEndsAt(openedEnd.rails, length)).toBe(inchesToMm(22));
+
+    const onlyStart = wire();
+    onlyStart.design.rails.noseRailBlendsFrom = inchesToMm(18);
+    const openedStart = parseSnapshot(Object.freeze(onlyStart));
+    expect("noseRailEndsAt" in openedStart.rails).toBe(false);
+    expect(openedStart.rails.noseRailBlendsFrom).toBe(inchesToMm(18));
+    expect(noseEndsAt(openedStart.rails, length)).toBe(defaultTailRailEndsAt(inchesToMm(18), length));
+  });
+
+  it("a value that could sit on no board — not a number, not finite, outside its outer bounds — opens with no key, and the rest of the rails open as saved (rule 15)", () => {
+    const outside: Record<(typeof KEYS)[number], unknown[]> = {
+      noseRailBlendsFrom: [inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min - 1), inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max + 1)],
+      noseRailEndsAt: [
+        inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min + HARD_EDGE_MIN_BLEND_IN - 1),
+        inchesToMm(BOARD_LENGTH_RANGE_IN.max / 2 + 1),
+      ],
+    };
+    const withTailPair = () => {
+      // The tail's own pair rides beside it and must come through untouched.
+      const stored = wire();
+      stored.design.rails.tailHardEdgeBlendsFrom = inchesToMm(20);
+      stored.design.rails.tailHardEdgeEndsAt = inchesToMm(26);
+      return stored;
+    };
+    for (const key of KEYS) {
+      for (const value of ["x", Number.NaN, null, Number.POSITIVE_INFINITY, 1e9, -inchesToMm(18), { inches: 18 }, ...outside[key]]) {
+        const stored = withTailPair();
+        stored.design.rails[key] = value;
+        const opened = parseSnapshot(Object.freeze(stored));
+        expect(key in opened.rails, `${key} ${String(value)}`).toBe(false);
+        expect(JSON.stringify(opened.rails)).not.toContain(key);
+        // The rest of the rails open exactly as saved: a bad value never costs the board anything else.
+        expect(opened.rails).toEqual(parseSnapshot(withTailPair()).rails);
+      }
+    }
+  });
+
+  it("a pair that crosses is kept as stored but read as a valid pair by the readers, never rewritten (rule 15)", () => {
+    const stored = wire();
+    stored.design.rails.noseRailBlendsFrom = inchesToMm(26);
+    stored.design.rails.noseRailEndsAt = inchesToMm(20);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.noseRailBlendsFrom).toBe(inchesToMm(26));
+    expect(opened.rails.noseRailEndsAt).toBe(inchesToMm(20));
+    const start = noseBlendsFrom(opened.rails, length);
+    const end = noseEndsAt(opened.rails, length);
+    expect(start).toBe(inchesToMm(26));
+    expect(end).toBe(defaultTailRailEndsAt(start, length));
+    expect(end - start).toBeGreaterThanOrEqual(inchesToMm(HARD_EDGE_MIN_BLEND_IN) - 1e-9);
+  });
+
+  it("a 20\"/26\" pair round-trips through buildSnapshot and parseSnapshot beside the tail's own, version still 5 (rule 15)", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: {
+        ...FIXTURES[0].rails,
+        tailHardEdgeBlendsFrom: inchesToMm(18),
+        tailHardEdgeEndsAt: inchesToMm(30),
+        noseRailBlendsFrom: inchesToMm(20),
+        noseRailEndsAt: inchesToMm(26),
+      },
+    };
+    const built = buildSnapshot(fields);
+    expect(built.version).toBe(5);
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+    const back = roundTrip(fields).rails;
+    expect(back).toEqual(fields.rails);
+    expect(back.noseRailBlendsFrom).toBe(inchesToMm(20));
+    expect(back.noseRailEndsAt).toBe(inchesToMm(26));
+    expect(back.tailHardEdgeBlendsFrom).toBe(inchesToMm(18));
+    expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(30));
   });
 });
 

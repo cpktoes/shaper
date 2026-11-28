@@ -243,10 +243,13 @@ export interface RailSectionSpec {
   nudges: RailMarkNudges;
 }
 
-/** The three rail sections plus the tail-only Hard Edge flag and the tail rail's two blend settings. Since
- * D-32 (plan 16-15) those two settings bound the tail's WHOLE rail character — Hard Edge, Family,
- * Symmetrical, Single Tuck and Sharp Bottom Tuck — fading into the centre's, Hard Edge ticked or not; the
- * nose's blend is automatic and stores nothing. */
+/** The three rail sections plus the tail-only Hard Edge flag and each tip rail's two blend settings. Since
+ * D-32 (plan 16-15) the tail's two bound the tail's WHOLE rail character — Hard Edge, Family,
+ * Symmetrical, Single Tuck and Sharp Bottom Tuck — fading into the centre's, Hard Edge ticked or not. The
+ * nose's blend was automatic and stored nothing until quick 261127-kkw (the founder, 2026-11-27: "I think we
+ * need to add a center to nose rail blend control like we did for the tail", reversing his D-32 "We don't need
+ * slider controls"); it now has its own two settings, and a board that stores neither reads the old automatic
+ * blend exactly. */
 export interface RailBandSpec {
   nose: RailSectionSpec;
   center: RailSectionSpec;
@@ -274,12 +277,31 @@ export interface RailBandSpec {
    * `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past the board's centre.
    */
   tailHardEdgeEndsAt?: Mm;
+  /**
+   * Nose Rail Blends From (quick 261127-kkw, the founder 2026-11-27): where the nose's rail starts blending into
+   * the centre's, measured from the NOSE tip — the nose's rail as set is full at and ahead of it. It governs the
+   * nose's whole rail character (Family, Symmetrical, Single Tuck, Sharp Bottom Tuck), as the tail's governs the
+   * tail's. Absent on every board saved before quick 261127-kkw and on every preset. Absent reads the rule the nose
+   * always had: full at and ahead of the nose 12" station. The slider shows it through `noseBlendsFrom` (12"); the
+   * litres and the 3D board read it through `noseBlendStations`. Both forgive anything outside its window.
+   */
+  noseRailBlendsFrom?: Mm;
+  /**
+   * Nose Rail Ends At (quick 261127-kkw): where the nose's rail has fully blended into the centre's rail as set,
+   * measured from the NOSE tip. Absent on every board saved before quick 261127-kkw and on every preset. Absent
+   * reads the rule the nose always had: the centre's rail at and behind the board's centre station — the true
+   * centre, whatever the slider's 1/2" grid would round it to, while the slider shows its own top (`noseEndsAt`).
+   * Always read through `noseEndsAt` (what is shown) or `noseBlendStations` (what is cut), which keep it at least
+   * `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past the board's centre.
+   */
+  noseRailEndsAt?: Mm;
 }
 
 /**
  * The range and step, in inches, a tail's Hard Edge Blends From may be set to (D-30). It never goes below the
  * 12" mark, so RAILS' tail plot at its own station is always a full hard edge; on a board too short for 30",
- * its top is the centre less `HARD_EDGE_MIN_BLEND_IN`.
+ * its top is the centre less `HARD_EDGE_MIN_BLEND_IN`. The nose's Blends From has the same range, measured from
+ * its own tip (quick 261127-kkw, D-03).
  */
 export const HARD_EDGE_BLENDS_FROM_RANGE_IN = { min: 12, max: 30, step: 0.5 } as const;
 
@@ -324,7 +346,7 @@ export function d30DefaultHardEdgeEndsAt(length: Mm): Mm {
   return inchesToMm(Math.round(fromTailIn / step) * step);
 }
 
-/** A window in millimetres from the tail tip. */
+/** A window in millimetres from its own tip: the tail tip for the tail's blend, the nose tip for the nose's. */
 export interface HardEdgeWindow {
   min: Mm;
   max: Mm;
@@ -339,7 +361,8 @@ function clampInto(value: number, window: HardEdgeWindow): Mm {
   return mm(Math.min(window.max, Math.max(window.min, value)));
 }
 
-/** Where Blends From may sit on a board of this length: 12" to 30", and never closer than 2" to the centre. */
+/** Where Blends From may sit on a board of this length, from its own tip: 12" to 30", and never closer than 2" to
+ * the centre. */
 function blendsFromWindow(length: Mm): HardEdgeWindow {
   const min = inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min);
   const top = Math.min(
@@ -349,7 +372,8 @@ function blendsFromWindow(length: Mm): HardEdgeWindow {
   return { min, max: mm(Math.max(min, top)) };
 }
 
-/** Where Ends At may sit once Blends From is known: at least 2" past it, and no further than the centre. */
+/** Where Ends At may sit once Blends From is known, from its own tip: at least 2" past it, and no further than the
+ * centre. */
 function endsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
   const min = mm(blendsFrom + inchesToMm(HARD_EDGE_MIN_BLEND_IN));
   return { min, max: mm(Math.max(min, length / 2)) };
@@ -435,6 +459,60 @@ export function hardEdgeEndsAt(
 }
 
 /**
+ * Nose Rail Blends From as its slider shows it (quick 261127-kkw, D-01, D-03), in millimetres from the nose tip:
+ * the stored `noseRailBlendsFrom` when it is a finite number inside 12" to min(30", centre − 2"), and otherwise
+ * 12" — the tail's own rule and the tail's own default, read from the other tip through the same `readBlendsFrom`,
+ * so the window logic cannot drift between the tips.
+ */
+export function noseBlendsFrom(rails: Pick<RailBandSpec, "noseRailBlendsFrom">, length: Mm): Mm {
+  return readBlendsFrom(rails.noseRailBlendsFrom, defaultTailRailBlendsFrom(length), length);
+}
+
+/**
+ * Nose Rail Ends At as its slider shows it (quick 261127-kkw), in millimetres from the nose tip: Blends From is
+ * resolved first, then the stored `noseRailEndsAt` is kept when it is a finite number from Blends From + 2" to the
+ * board's centre, and otherwise the top of the slider (`defaultTailRailEndsAt`). The two can never cross, and a
+ * crafted or stale pair always reads as a valid pair. What the litres read is `noseBlendStations`.
+ */
+export function noseEndsAt(rails: Pick<RailBandSpec, "noseRailBlendsFrom" | "noseRailEndsAt">, length: Mm): Mm {
+  const blendsFrom = noseBlendsFrom(rails, length);
+  return readEndsAt(rails.noseRailEndsAt, blendsFrom, defaultTailRailEndsAt(blendsFrom, length), length);
+}
+
+/**
+ * The two ends of the nose rail's blend as the litres and the 3D board read them (quick 261127-kkw), as stations
+ * from the TAIL: `fullFrom`, at and ahead of which the nose's rail is full, and `goneAt`, at and behind which the
+ * rail is the centre's. `centre` and `nose12` are the board's own centre station and nose 12" station, handed in
+ * by the caller. Three facts decide how it is written (D-02: a board that stores neither key is cut exactly as it
+ * was before the keys existed):
+ *
+ * 1. The nose keeps its own weight (`noseRailWeight` in volume.ts). The tail's weight mirrored is the same curve on
+ *    paper but differs in the last bits, so only the two stations the nose's weight is given may change.
+ * 2. What the slider shows is not what is cut. An untouched Ends At shows the slider's top — the centre rounded
+ *    inward onto the 1/2" grid, 36 1/2" on a 73 7/8" board — while the blend still ends at the true centre
+ *    (36 15/16" there), as it always has.
+ * 3. The read is structural, not arithmetic. Blends From is taken when it is a finite number inside its window, and
+ *    Ends At when it is a finite number inside its window past the shown Blends From; a value taken becomes
+ *    `length − value`. Anything else — absent, garbage, outside its window, a pair that crosses — gets back the very
+ *    anchor that was handed in, untouched. So a board with neither key makes the same call with the same numbers
+ *    as before, and each key defaults on its own: dragging one slider never moves what the other one means.
+ *
+ * The windows keep `fullFrom` at least 2" ahead of `goneAt` and `goneAt` never behind the centre.
+ */
+export function noseBlendStations(
+  rails: Pick<RailBandSpec, "noseRailBlendsFrom" | "noseRailEndsAt">,
+  length: Mm,
+  centre: Mm,
+  nose12: Mm,
+): { fullFrom: Mm; goneAt: Mm } {
+  const storedFrom: unknown = rails.noseRailBlendsFrom;
+  const storedTo: unknown = rails.noseRailEndsAt;
+  const fullFrom = storedInside(storedFrom, blendsFromWindow(length)) ? mm(length - storedFrom) : nose12;
+  const goneAt = storedInside(storedTo, endsAtWindow(noseBlendsFrom(rails, length), length)) ? mm(length - storedTo) : centre;
+  return { fullFrom, goneAt };
+}
+
+/**
  * D-30's Blends From, kept by name (D-25): the same forgiving read with the OLD default, 18" clamped into the
  * window. Read only by go-live 1's and plan 16-15's rules (`HARD_EDGE_FADE`, `RAIL_CHARACTER_FADE`), the old
  * reports and the pins — never by a screen. Returns today's (pre-quick 261113-psx) numbers bit for bit.
@@ -478,9 +556,9 @@ export function withD30TailRailBlend<R extends Pick<RailBandSpec, "tailHardEdgeB
 }
 
 /**
- * Where the Hard Edge Blends From slider may go while Ends At sits at `endsAt` (D-30): 12" up to
- * min(30", Ends At − 2", centre − 2"), so the start can never be dragged within 2" of the end. Pass the
- * readers' values, which always sit inside their windows.
+ * Where a Blends From slider may go while its Ends At sits at `endsAt`, both from its own tip (D-30; the nose's
+ * pair too since quick 261127-kkw): 12" up to min(30", Ends At − 2", centre − 2"), so the start can never be
+ * dragged within 2" of the end. Pass the readers' values, which always sit inside their windows.
  */
 export function hardEdgeBlendsFromWindow(endsAt: Mm, length: Mm): HardEdgeWindow {
   const own = blendsFromWindow(length);
@@ -489,8 +567,10 @@ export function hardEdgeBlendsFromWindow(endsAt: Mm, length: Mm): HardEdgeWindow
 }
 
 /**
- * Where the Hard Edge Ends At slider may go while Blends From sits at `blendsFrom` (D-30): from
- * Blends From + 2" to the board's centre ("all the way to the centre of the board", the founder).
+ * Where an Ends At slider may go while its Blends From sits at `blendsFrom`, both from its own tip (D-30; the
+ * nose's pair too since quick 261127-kkw): from Blends From + 2" to the board's centre ("all the way to the centre
+ * of the board", the founder). Both tips' windows end at the centre and never pass it, so the two blends can meet
+ * there and never overlap.
  */
 export function hardEdgeEndsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
   return endsAtWindow(blendsFrom, length);

@@ -33,6 +33,9 @@ import {
   hardEdgeEndsAt,
   hardEdgeEndsAtWindow,
   hardEdgeWindowOnGrid,
+  noseBlendsFrom,
+  noseBlendStations,
+  noseEndsAt,
   withD30TailRailBlend,
   DEFAULT_TIP_RAIL_SCALE,
   MIN_BOTTOM_TUCK_SEPARATION_IN,
@@ -1143,6 +1146,206 @@ describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail rail's blend, 12\" 
     for (const key of ["tailHardEdgeBlendsFrom", "tailHardEdgeEndsAt"]) {
       expect(key in DEFAULT_RAIL_BAND_SPEC).toBe(false);
       for (const preset of BOARD_PRESETS) expect(key in preset.rails, preset.id).toBe(false);
+    }
+  });
+});
+
+describe("noseBlendsFrom and noseEndsAt — the nose rail's blend as its sliders show it, the tail's rule read from the nose (quick 261127-kkw, D-01, D-03)", () => {
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
+  const GARBAGE: unknown[] = [Number.NaN, Infinity, -Infinity, 1e9, -inchesToMm(18), "18", null, { inches: 18 }];
+  /** The same two numbers under the tail's keys: one rule, two tips. */
+  const asTail = (rails: { noseRailBlendsFrom?: unknown; noseRailEndsAt?: unknown }) => ({
+    ...("noseRailBlendsFrom" in rails ? { tailHardEdgeBlendsFrom: rails.noseRailBlendsFrom as Mm } : {}),
+    ...("noseRailEndsAt" in rails ? { tailHardEdgeEndsAt: rails.noseRailEndsAt as Mm } : {}),
+  });
+  // The founder's presets' lengths, both ends of the range, short boards, and lengths whose centre is off the 1/2" grid.
+  const LENGTHS_IN = [48, 56, 63.5, 68, 72, 73.25, 73.875, 74, 86, 108, 144];
+
+  it("a board that says nothing reads 12\" and the top of Ends At's slider, at every length", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const len = inchesToMm(lengthIn);
+      const from = noseBlendsFrom({}, len);
+      expect(from, `${lengthIn}"`).toBe(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+      expect(from).toBe(defaultTailRailBlendsFrom(len));
+      const top = hardEdgeWindowOnGrid(hardEdgeEndsAtWindow(from, len)).max;
+      expect(noseEndsAt({}, len), `${lengthIn}"`).toBe(inchesToMm(top));
+      expect(noseEndsAt({}, len)).toBe(defaultTailRailEndsAt(from, len));
+      // The very figures the tail's own rows show on a board that says nothing.
+      expect(noseBlendsFrom({}, len)).toBe(hardEdgeBlendsFrom({}, len));
+      expect(noseEndsAt({}, len)).toBe(hardEdgeEndsAt({}, len));
+    }
+    expect(noseBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length)).toBe(hardEdgeBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length));
+    expect(noseEndsAt(DEFAULT_RAIL_BAND_SPEC, length)).toBe(mm(length / 2));
+  });
+
+  it("a stored 20\"/26\" pair reads exactly as stored, and one key alone leaves the other at its default", () => {
+    const pair = { noseRailBlendsFrom: inchesToMm(20), noseRailEndsAt: inchesToMm(26) };
+    expect(noseBlendsFrom(pair, length)).toBe(inchesToMm(20));
+    expect(noseEndsAt(pair, length)).toBe(inchesToMm(26));
+    expect(noseEndsAt({ noseRailBlendsFrom: inchesToMm(20) }, length)).toBe(noseEndsAt({}, length));
+    const endOnly: Pick<RailBandSpec, "noseRailBlendsFrom" | "noseRailEndsAt"> = { noseRailEndsAt: inchesToMm(26) };
+    expect(noseBlendsFrom(endOnly, length)).toBe(noseBlendsFrom({}, length));
+  });
+
+  it("garbage, an out-of-window value and a crossing pair read the defaults, exactly as the tail's readers read them", () => {
+    for (const stored of [...GARBAGE, inchesToMm(11.5), inchesToMm(30.5)]) {
+      const rails = { noseRailBlendsFrom: stored as Mm };
+      expect(noseBlendsFrom(rails, length), String(stored)).toBe(noseBlendsFrom({}, length));
+      expect(noseEndsAt(rails, length), String(stored)).toBe(noseEndsAt({}, length));
+    }
+    for (const stored of [...GARBAGE, mm(length / 2 + 1), inchesToMm(10)]) {
+      expect(noseEndsAt({ noseRailEndsAt: stored as Mm }, length), String(stored)).toBe(noseEndsAt({}, length));
+    }
+    for (const [from, to] of [
+      [24, 20],
+      [22, 23],
+      [26, 26],
+      [29, 20],
+    ]) {
+      const rails = { noseRailBlendsFrom: inchesToMm(from), noseRailEndsAt: inchesToMm(to) };
+      expect(noseBlendsFrom(rails, length), `${from}/${to}`).toBe(inchesToMm(from));
+      expect(noseEndsAt(rails, length), `${from}/${to}`).toBe(noseEndsAt({}, length));
+    }
+  });
+
+  it("one rule, two tips: over a sweep of stored values and lengths the nose reads what the tail reads from the same two numbers, ordered and inside its windows", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const len = inchesToMm(lengthIn);
+      for (let a = 8; a <= 34; a += 1.5) {
+        for (let b = 8; b <= 76; b += 2.5) {
+          const rails = { noseRailBlendsFrom: inchesToMm(a), noseRailEndsAt: inchesToMm(b) };
+          const s = noseBlendsFrom(rails, len);
+          const e = noseEndsAt(rails, len);
+          expect(s).toBe(hardEdgeBlendsFrom(asTail(rails), len));
+          expect(e).toBe(hardEdgeEndsAt(asTail(rails), len));
+          expect(e - s).toBeGreaterThanOrEqual(gap - 1e-9);
+          expect(e).toBeLessThanOrEqual(len / 2 + 1e-9);
+          const fromWindow = hardEdgeBlendsFromWindow(e, len);
+          const toWindow = hardEdgeEndsAtWindow(s, len);
+          expect(s).toBeGreaterThanOrEqual(fromWindow.min);
+          expect(s).toBeLessThanOrEqual(fromWindow.max + 1e-9);
+          expect(e).toBeGreaterThanOrEqual(toWindow.min - 1e-9);
+          expect(e).toBeLessThanOrEqual(toWindow.max + 1e-9);
+        }
+      }
+    }
+  });
+
+  it("on a board whose centre is nearer than 32\" Blends From tops out 2\" short of the centre (22\" on a 4'0\")", () => {
+    for (const lengthIn of [48, 56, 60]) {
+      const len = inchesToMm(lengthIn);
+      const top = hardEdgeBlendsFromWindow(noseEndsAt({}, len), len).max;
+      expect(top, `${lengthIn}"`).toBeCloseTo(len / 2 - gap, 9);
+      expect(top).toBeLessThan(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max));
+      // 12" is inside the window on every board the app draws.
+      expect(hardEdgeBlendsFromWindow(noseEndsAt({}, len), len).min).toBe(inchesToMm(12));
+    }
+    expect(hardEdgeBlendsFromWindow(noseEndsAt({}, inchesToMm(64)), inchesToMm(64)).max).toBe(inchesToMm(30));
+  });
+
+  it("no default and no preset carries either field", () => {
+    for (const key of ["noseRailBlendsFrom", "noseRailEndsAt"]) {
+      expect(key in DEFAULT_RAIL_BAND_SPEC).toBe(false);
+      for (const preset of BOARD_PRESETS) expect(key in preset.rails, preset.id).toBe(false);
+    }
+  });
+});
+
+describe("noseBlendStations — what the litres and the 3D board read; a board that says nothing gets back the very stations it handed in (quick 261127-kkw, D-02)", () => {
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
+  // Two numbers that are no board's real stations: if the default did any arithmetic they could not come back as they are.
+  const CENTRE = mm(1234.5678901234567);
+  const NOSE12 = mm(2345.6789012345678);
+  const GARBAGE: unknown[] = [Number.NaN, Infinity, -Infinity, 1e9, -inchesToMm(18), "18", null, { inches: 18 }];
+  const LENGTHS_IN = [48, 56, 63.5, 68, 72, 73.25, 73.875, 74, 86, 108, 144];
+
+  it("neither key: the two anchors themselves, untouched", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const stations = noseBlendStations({}, inchesToMm(lengthIn), CENTRE, NOSE12);
+      expect(stations.fullFrom).toBe(NOSE12);
+      expect(stations.goneAt).toBe(CENTRE);
+    }
+    const stock = noseBlendStations(DEFAULT_RAIL_BAND_SPEC, length, CENTRE, NOSE12);
+    expect(stock).toEqual({ fullFrom: NOSE12, goneAt: CENTRE });
+  });
+
+  it("a stored Blends From alone turns into a station from the tail and leaves the centre it was handed", () => {
+    const stored = inchesToMm(18);
+    const stations = noseBlendStations({ noseRailBlendsFrom: stored }, length, CENTRE, NOSE12);
+    expect(stations.fullFrom).toBe(mm(length - stored));
+    expect(stations.goneAt).toBe(CENTRE);
+  });
+
+  it("a stored Ends At alone turns into a station from the tail and leaves the nose 12\" station it was handed", () => {
+    const stored = inchesToMm(30);
+    const stations = noseBlendStations({ noseRailEndsAt: stored }, length, CENTRE, NOSE12);
+    expect(stations.fullFrom).toBe(NOSE12);
+    expect(stations.goneAt).toBe(mm(length - stored));
+  });
+
+  it("a stored pair turns into two stations from the tail", () => {
+    const pair = { noseRailBlendsFrom: inchesToMm(20.5), noseRailEndsAt: inchesToMm(33) };
+    expect(noseBlendStations(pair, length, CENTRE, NOSE12)).toEqual({
+      fullFrom: mm(length - inchesToMm(20.5)),
+      goneAt: mm(length - inchesToMm(33)),
+    });
+  });
+
+  it("a refused value gives back the anchor it was handed: garbage, out of its window, or a pair that crosses", () => {
+    for (const stored of [...GARBAGE, inchesToMm(11.5), inchesToMm(30.5)]) {
+      const stations = noseBlendStations({ noseRailBlendsFrom: stored as Mm }, length, CENTRE, NOSE12);
+      expect(stations.fullFrom, String(stored)).toBe(NOSE12);
+      expect(stations.goneAt, String(stored)).toBe(CENTRE);
+    }
+    for (const stored of [...GARBAGE, mm(length / 2 + 1), inchesToMm(10)]) {
+      const stations = noseBlendStations({ noseRailEndsAt: stored as Mm }, length, CENTRE, NOSE12);
+      expect(stations.goneAt, String(stored)).toBe(CENTRE);
+      expect(stations.fullFrom, String(stored)).toBe(NOSE12);
+    }
+    // A crossing pair: Blends From is kept, Ends At is refused and reads the centre it was handed.
+    const crossing = noseBlendStations({ noseRailBlendsFrom: inchesToMm(26), noseRailEndsAt: inchesToMm(20) }, length, CENTRE, NOSE12);
+    expect(crossing.fullFrom).toBe(mm(length - inchesToMm(26)));
+    expect(crossing.goneAt).toBe(CENTRE);
+  });
+
+  it("with the board's real stations, over a sweep, the blend never ends behind the centre and is never shorter than 2\"", () => {
+    for (const lengthIn of LENGTHS_IN) {
+      const len = inchesToMm(lengthIn);
+      const centre = mm(len / 2);
+      const nose12 = mm(len - inchesToMm(12));
+      const candidates: (number | undefined)[] = [undefined];
+      // Every 2 1/2" from 8" to 75 1/2": values below, inside and past every window, few enough that a loaded machine
+      // still finishes the sweep well inside the time limit.
+      for (let v = 8; v <= 76; v += 2.5) candidates.push(inchesToMm(v));
+      for (const from of candidates) {
+        for (const to of candidates) {
+          const rails = {
+            ...(from === undefined ? {} : { noseRailBlendsFrom: mm(from) }),
+            ...(to === undefined ? {} : { noseRailEndsAt: mm(to) }),
+          };
+          const { fullFrom, goneAt } = noseBlendStations(rails, len, centre, nose12);
+          expect(goneAt, `${lengthIn}" ${from}/${to}`).toBeGreaterThanOrEqual(centre);
+          expect(fullFrom - goneAt, `${lengthIn}" ${from}/${to}`).toBeGreaterThanOrEqual(gap - 1e-9);
+          expect(fullFrom).toBeLessThanOrEqual(nose12 + 1e-9);
+          // What the sliders show is what the litres read, wherever a value is stored and taken.
+          if (fullFrom !== nose12) expect(fullFrom).toBe(mm(len - noseBlendsFrom(rails, len)));
+          if (goneAt !== centre) expect(goneAt).toBe(mm(len - noseEndsAt(rails, len)));
+        }
+      }
+    }
+  });
+
+  it("on a whole-inch board, the pair a drag stores at the sliders' own ends is the two anchors bit for bit", () => {
+    for (let lengthIn = BOARD_LENGTH_RANGE_IN.min; lengthIn <= BOARD_LENGTH_RANGE_IN.max; lengthIn += 1) {
+      const len = inchesToMm(lengthIn);
+      const centre = mm(len / 2);
+      const nose12 = mm(len - inchesToMm(12));
+      const stored = { noseRailBlendsFrom: noseBlendsFrom({}, len), noseRailEndsAt: noseEndsAt({}, len) };
+      const stations = noseBlendStations(stored, len, centre, nose12);
+      expect(stations.fullFrom, `${lengthIn}"`).toBe(nose12);
+      expect(stations.goneAt, `${lengthIn}"`).toBe(centre);
     }
   });
 });

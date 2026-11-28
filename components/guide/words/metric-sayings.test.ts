@@ -21,7 +21,7 @@ import { GUIDE_IMPERIAL_FIGURE, GUIDE_METRIC_EXEMPT, GUIDE_METRIC_SAYINGS, guide
 
 /**
  * The Metric sayings are the founder's, pair for pair (Phase 18, D-22, R11): the module equals the words
- * page's `## Metric sayings` section, every Metric line on all 84 cards and the five intros reads without
+ * page's `## Metric sayings` section, every Metric line on all 85 cards and the five intros reads without
  * an inch or a foot, and every number of the app in a saying is the app's own Metric figure, worked out
  * here from the constant it comes from — never typed.
  */
@@ -182,8 +182,8 @@ describe("GUIDE_IMPERIAL_FIGURE, the one no-inch rule", () => {
 });
 
 describe("no Metric line on any card or intro carries an inch or a foot", () => {
-  it("all 84 cards, every line, with their sayings applied", () => {
-    expect(page.cards).toHaveLength(84);
+  it("all 85 cards, every line, with their sayings applied", () => {
+    expect(page.cards).toHaveLength(85);
     for (const card of page.cards) {
       const metric = guideLines(asWords(card), "metric");
       for (const field of FIELDS) {

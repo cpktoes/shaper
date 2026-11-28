@@ -183,6 +183,20 @@
  *    of the three nose concaves leaves no key at all and keeps the cut and the rest of the board; a roll of 0 leaves no
  *    key either. The version stays 5, for rule 6's reason: the reader on `main` drops the unknown key, so a board saved
  *    here opens there with its nose unrolled. No database change.
+ * 15. The rails carry the nose's two blend settings, each optional (quick 261127-kkw, the founder 2026-11-27: "I
+ *    think we need to add a center to nose rail blend control like we did for the tail"), both in millimetres
+ *    from the NOSE tip: `noseRailBlendsFrom` (Nose Rail Blends From, where the nose's rail starts blending into
+ *    the centre's) and `noseRailEndsAt` (Nose Rail Ends At, where it has fully become the centre's). Absent —
+ *    every board saved before them, and every preset — reads the rule the nose always had, from the nose 12"
+ *    station to the board's true centre, through `noseBlendStations`; the sliders show 12" and the top of Ends
+ *    At's slider through `noseBlendsFrom` / `noseEndsAt`. They are forgiving on read exactly as rule 13's two:
+ *    anything that is not a finite number that could sit on some board (Blends From 12"-30", Ends At 14" to the
+ *    centre of the longest board) leaves no key at all, so a crafted value never rejects the board and never
+ *    costs it anything else; a value that fits some board but not this one, or a pair that crosses, is forgiven
+ *    by those readers on every read. Nothing is rewritten until the shaper saves. The version stays 5, for rule
+ *    6's reason: the reader on `main` (and a rolled-back deployment) drops the unknown keys, so a board saved
+ *    here opens there with the nose's old fixed blend. No database change — rails live in the `snapshot` JSON
+ *    column. Rule 13's twin for the other tip.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -469,7 +483,8 @@ const railSectionSpecSchema = (defaultScale: number) =>
   });
 
 /**
- * Rule 13's outer bounds, in millimetres from the tail tip (D-30): the widest either setting could ever be on a
+ * Rule 13's outer bounds, in millimetres from the tail tip (D-30) — and rule 15's, the same figures from the nose
+ * tip (quick 261127-kkw): the widest either setting could ever be on a
  * board the app draws. Blends From 12" to 30"; Ends At from 12" + 2" to the centre of the longest board
  * (`BOARD_LENGTH_RANGE_IN.max`). Where each actually sits on a given board — and that the two never cross — is
  * the readers' work (`hardEdgeBlendsFrom`, `hardEdgeEndsAt`), never this one's.
@@ -499,13 +514,29 @@ const railBandSpecSchema = z
       .max(HARD_EDGE_ENDS_AT_MAX_MM)
       .optional()
       .catch(undefined),
+    // Rule 15 (quick 261127-kkw): the nose's own pair, in millimetres from the nose tip, with the tail's outer
+    // bounds — the same window from either tip — optional and forgiving in the same way.
+    noseRailBlendsFrom: z
+      .number()
+      .min(HARD_EDGE_BLENDS_FROM_MIN_MM)
+      .max(HARD_EDGE_BLENDS_FROM_MAX_MM)
+      .optional()
+      .catch(undefined),
+    noseRailEndsAt: z
+      .number()
+      .min(HARD_EDGE_ENDS_AT_MIN_MM)
+      .max(HARD_EDGE_ENDS_AT_MAX_MM)
+      .optional()
+      .catch(undefined),
   })
-  // Rule 13: a value the reader refused leaves no key behind (not even an undefined one), so the parsed
+  // Rules 13 and 15: a value the reader refused leaves no key behind (not even an undefined one), so the parsed
   // rails of a board without a usable value are exactly a board without the field.
-  .transform(({ tailHardEdgeBlendsFrom, tailHardEdgeEndsAt, ...rest }) => ({
+  .transform(({ tailHardEdgeBlendsFrom, tailHardEdgeEndsAt, noseRailBlendsFrom, noseRailEndsAt, ...rest }) => ({
     ...rest,
     ...(tailHardEdgeBlendsFrom === undefined ? {} : { tailHardEdgeBlendsFrom: mm(tailHardEdgeBlendsFrom) }),
     ...(tailHardEdgeEndsAt === undefined ? {} : { tailHardEdgeEndsAt: mm(tailHardEdgeEndsAt) }),
+    ...(noseRailBlendsFrom === undefined ? {} : { noseRailBlendsFrom: mm(noseRailBlendsFrom) }),
+    ...(noseRailEndsAt === undefined ? {} : { noseRailEndsAt: mm(noseRailEndsAt) }),
   }))
   // Rule 11 (fast task 190, R21): the tail's Symmetrical and Hard Edge can never both be on. A board
   // saved with both (none of the presets; a board saved before the rule could) opens with Hard Edge

@@ -73,6 +73,7 @@ import {
   d30HardEdgeEndsAt,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
+  noseBlendStations,
 } from "./rail-bands";
 import {
   type Litres,
@@ -890,10 +891,16 @@ function unitWeight(weight: number): number {
 /**
  * How much of a station ahead of the centre is the nose's rail (D-32, the founder: "The rule for center/nose
  * blending should be to make the transition as smooth as possible. We don't need slider controls."): 0 at and
- * behind the centre station, 1 at and beyond the nose 12" station, and between them the smoothstep `t²(3 − 2t)`
- * with `t = (station − centre)/(nose12 − centre)` — the tail's own shape, level at both ends, the smoothest of
+ * behind `centre`, 1 at and beyond `nose12`, and between them the smoothstep `t²(3 − 2t)` with
+ * `t = (station − centre)/(nose12 − centre)` — the tail's own shape, level at both ends, the smoothest of
  * the four the planner measured. Never falls along the board; always inside [0, 1]. From the nose 12" mark to
  * the tip the nose's rail as set shrinks with the foam as it always has.
+ *
+ * The founder reversed "We don't need slider controls" on 2026-11-27 (quick 261127-kkw: "I think we need to add a
+ * center to nose rail blend control like we did for the tail"). The curve is untouched; what changed is the two
+ * stations it is given. `centre` is where the nose's rail is gone and `nose12` where it is full — the board's
+ * centre station and nose 12" station on a board that stores nothing (the names they have always had here), and
+ * the stations of Nose Rail Ends At and Nose Rail Blends From on a board that stores them (`noseBlendStations`).
  */
 export function noseRailWeight(station: Mm, centre: Mm, nose12: Mm): number {
   if (station <= centre) return 0;
@@ -986,14 +993,23 @@ export function tailRollStations(panels: number): Mm[] {
  */
 export type SectionRule = HardEdgeRule | RailCharacterRule;
 
+/** The nose's blend as it was fixed before quick 261127-kkw: from the centre station to the nose 12" station,
+ * whatever a board stores. The two anchors go back as they came. Read only by `RAIL_CHARACTER_FADE`. */
+const fixedNoseBlendStations: typeof noseBlendStations = (_rails, _length, centre, nose12) => ({
+  fullFrom: nose12,
+  goneAt: centre,
+});
+
 /**
- * The one body of the tail-and-nose rail-character fade, read through whichever pair of tail-blend readers it is
- * given — so `RAIL_CHARACTER_FADE` (D-30's readers, by name) and `SMOOTH_SURFACE_FADE` (the live readers) share
- * every other line and their `at`s cannot drift.
+ * The one body of the tail-and-nose rail-character fade, read through whichever pair of tail-blend readers and
+ * whichever reader of the nose's two stations it is given — so `RAIL_CHARACTER_FADE` (D-30's readers and the fixed
+ * nose blend, by name) and `SMOOTH_SURFACE_FADE` (the live readers) share every other line and their `at`s cannot
+ * drift.
  */
 function railCharacterFadeAt(
   blendsFromOf: typeof hardEdgeBlendsFrom,
   endsAtOf: typeof hardEdgeEndsAt,
+  noseStationsOf: typeof noseBlendStations,
 ): RailCharacterRule["at"] {
   return (station, _nearest, anchors, rails, length) => {
     const base = railCharacterOf(rails, "center");
@@ -1005,7 +1021,8 @@ function railCharacterFadeAt(
     }
     const tip = railCharacterOf(rails, "nose");
     if (railCharacterDifferences(rails, "nose").length === 0) return { base, tip, tipWeight: 0 };
-    return { base, tip, tipWeight: noseRailWeight(station, anchors.center, anchors.nose) };
+    const { fullFrom, goneAt } = noseStationsOf(rails, length, anchors.center, anchors.nose);
+    return { base, tip, tipWeight: noseRailWeight(station, goneAt, fullFrom) };
   };
 }
 
@@ -1020,15 +1037,17 @@ function railCharacterFadeAt(
  *   board says nothing): the tail's rail full at and behind Blends From, the centre's at and beyond Ends At, the
  *   point blend of the two between (D-31). This is plan 16-15's rule as it was, named by the 102-board pin and the
  *   two reports; the live rule below reads the live readers.
- * - The nose, with no control and nothing stored ("Only the tail rail gets the users blend. The nose is a
- *   default that always gets applied."): ahead of the centre the tip is the nose's rail, and whenever it
- *   differs from the centre's the tip's weight is `noseRailWeight`, from the centre to the nose 12" station.
+ * - The nose, with no control and nothing stored as the founder ruled it then ("Only the tail rail gets the users
+ *   blend. The nose is a default that always gets applied."): ahead of the centre the tip is the nose's rail, and
+ *   whenever it differs from the centre's the tip's weight is `noseRailWeight`, from the centre to the nose 12"
+ *   station. This old rule keeps that fixed nose blend whatever a board stores (`fixedNoseBlendStations`): the nose
+ *   got its own two settings on 2026-11-27 (quick 261127-kkw), and only the live rule below reads them.
  *
  * Where a tip's rail is the centre's, its weight is 0 and every station on that side is the centre's rail, as
  * before.
  */
 export const RAIL_CHARACTER_FADE: RailCharacterRule = {
-  at: railCharacterFadeAt(d30HardEdgeBlendsFrom, d30HardEdgeEndsAt),
+  at: railCharacterFadeAt(d30HardEdgeBlendsFrom, d30HardEdgeEndsAt, fixedNoseBlendStations),
 };
 
 /**
@@ -1042,10 +1061,13 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * test and the two reports (`lib/models/surface-report.ts`, `lib/models/rail-character-report.ts`); no screen uses it.
  * Since quick 261113-psx this rule has its own `at`, on the LIVE readers (`hardEdgeBlendsFrom` / `hardEdgeEndsAt`: the
  * tail's rail blends from the 12" station to the board's centre when the board says nothing), where it used to
- * share `RAIL_CHARACTER_FADE`'s; both come from the one `railCharacterFadeAt`, so they cannot drift.
+ * share `RAIL_CHARACTER_FADE`'s; both come from the one `railCharacterFadeAt`, so they cannot drift. Since quick
+ * 261127-kkw (the founder, 2026-11-27) it also reads the nose's two settings, Nose Rail Blends From and Nose Rail
+ * Ends At, through `noseBlendStations`: a board that stores neither gets the centre station and the nose 12" station
+ * back untouched, so its nose blends exactly as it did when the rule was fixed.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
-  at: railCharacterFadeAt(hardEdgeBlendsFrom, hardEdgeEndsAt),
+  at: railCharacterFadeAt(hardEdgeBlendsFrom, hardEdgeEndsAt, noseBlendStations),
   fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open", rail: "exact" },
 };
 
@@ -1786,8 +1808,10 @@ export function boardSectionEnds(
  * and eases by smoothstep into the centre's rail as set, which is full at and beyond Tail Rail Ends At
  * (`hardEdgeEndsAt`, the board's centre — 36" on a 6'0" — unless the board says otherwise; D-30's 18" and 30" before
  * quick 261113-psx) — Hard Edge ticked or not; on the nose side
- * the centre's rail eases into the nose's by smoothstep from the centre to the nose 12" station, with no
- * control (`noseRailWeight`). A blending station counts the foam the 3D board draws there — the two end
+ * the centre's rail eases into the nose's by smoothstep (`noseRailWeight`) from Nose Rail Ends At to Nose Rail
+ * Blends From (`noseBlendStations`, quick 261127-kkw: the centre station and the nose 12" station unless the board
+ * says otherwise — the fixed blend the nose had, with no control, until the founder asked for one on 2026-11-27).
+ * A blending station counts the foam the 3D board draws there — the two end
  * finished rails blended point for point by that weight — corrected by the same hair the drawn board loses to
  * its straight segments everywhere else (D-31, `fadingSectionArea`); a bottom edge stays sharp through the
  * blend wherever both ends are sharp (`BoardSection.sharpness`). While the tail's Hard Edge is on, the tail's

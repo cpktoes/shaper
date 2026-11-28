@@ -18,8 +18,8 @@ const volume = page.pages.find((p) => p.page === "volume")!;
 describe("the words page", () => {
   it("is read as five pages and only five, with the cards and the Model info notes it holds", () => {
     expect(page.pages.map((p) => p.page)).toEqual(["template", "rocker", "rails", "volume", "fins"]);
-    expect(page.pages.map((p) => p.cards.length)).toEqual([22, 14, 17, 8, 23]);
-    expect(page.cards).toHaveLength(84);
+    expect(page.pages.map((p) => p.cards.length)).toEqual([22, 14, 18, 8, 23]);
+    expect(page.cards).toHaveLength(85);
     expect(page.cards.filter((card) => card.info !== null)).toHaveLength(14);
     expect(page.cards.filter((card) => card.info !== null).every((card) => card.page === "fins")).toBe(true);
   });

@@ -351,7 +351,8 @@ export function thinningStartSlider(
 /**
  * Where the tail's hard edge starts blending into the tucked rail, as a distance in from the tail tip
  * (Phase 16, D-30): a dim, like a Thinning Start — read through `formatDim`, Imperial `18"`, Metric
- * centimetres to one decimal, `45.7 cm`; never `formatMark`, never `457 mm`.
+ * centimetres to one decimal, `45.7 cm`; never `formatMark`, never `457 mm`. The nose's Blends From (quick
+ * 261127-kkw) reads through this too: the same kind of figure, measured in from the nose tip.
  */
 export function formatHardEdgeBlendsFrom(value: Mm, system: UnitsSystem): string {
   return formatDim(value, system);
@@ -360,7 +361,8 @@ export function formatHardEdgeBlendsFrom(value: Mm, system: UnitsSystem): string
 /**
  * Where the rail has fully blended into the centre's tucked rail, as a distance in from the tail tip
  * (Phase 16, D-20/D-30, UI-SPEC §17): a dim, read through `formatDim`, Imperial `30"` / `23 1/2"`, Metric
- * `76.2 cm`; never `formatMark`.
+ * `76.2 cm`; never `formatMark`. The nose's Ends At (quick 261127-kkw) reads through this too, measured in from
+ * the nose tip.
  */
 export function formatHardEdgeEndsAt(value: Mm, system: UnitsSystem): string {
   return formatDim(value, system);
@@ -370,6 +372,8 @@ export function formatHardEdgeEndsAt(value: Mm, system: UnitsSystem): string {
  * The Hard Edge Blends From slider (D-30): from 12" up to min(30", Ends At − 2", centre − 2")
  * (`hardEdgeBlendsFromWindow`, so it follows Ends At and the board's length), rounded inward onto the 1/2"
  * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider` — the component never converts a unit.
+ * Also the Nose Rail Blends From slider (quick 261127-kkw, D-03): called with the nose's two values, measured from
+ * the nose tip — the window is the same from either tip.
  */
 export function hardEdgeBlendsFromSlider(value: Mm, endsAt: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
   const rangeIn = hardEdgeWindowOnGrid(hardEdgeBlendsFromWindow(endsAt, length));
@@ -379,7 +383,8 @@ export function hardEdgeBlendsFromSlider(value: Mm, endsAt: Mm, length: Mm, syst
 /**
  * The Hard Edge Ends At slider (D-20/D-30, UI-SPEC §17): from Blends From + 2" to the board's centre
  * (`hardEdgeEndsAtWindow`, so it follows Blends From and the board's length), rounded inward onto the 1/2"
- * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider`.
+ * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider`. Also the Nose Rail Ends At slider (quick
+ * 261127-kkw, D-03), called with the nose's two values, measured from the nose tip.
  */
 export function hardEdgeEndsAtSlider(value: Mm, blendsFrom: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
   const rangeIn = hardEdgeWindowOnGrid(hardEdgeEndsAtWindow(blendsFrom, length));

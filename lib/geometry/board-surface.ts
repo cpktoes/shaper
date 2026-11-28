@@ -48,7 +48,7 @@ import { BOARD_LENGTH_RANGE_IN } from "./board";
 import { HALF_SECTION_POINT_COUNT, SECTION_POINTS, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints, sampleFoil } from "./foil";
 import { type OutlineGeometry, sampleOutline, tailCutStation } from "./outline";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt, noseBlendStations } from "./rail-bands";
 import { inchesToMm, mm, mmToInches, type Mm } from "./units";
 import {
   type BoardSection,
@@ -172,7 +172,9 @@ function assertFinite(field: string, value: number, station: number): void {
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
  * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — whenever the
  * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
- * ends (D-30), at each wing's own step (D-33: every point of the step, or a hair either side of a square step's one
+ * ends (D-30), and whenever the nose's rail differs from the centre's where the nose's blend begins and ends
+ * (quick 261127-kkw: on a board that has never moved Nose Rail Blends From or Ends At those two are the centre and
+ * the nose 12" station, already in the list, so its rings are where they always were), at each wing's own step (D-33: every point of the step, or a hair either side of a square step's one
  * station, which has two widths) and every twelfth of the way through the stretch the wing's two sides share (D-37)
  * and through the tail's roll (D-38) — filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
@@ -190,6 +192,13 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
   if (railCharacterDifferences(rails, "tail").length > 0) {
     // Both ends of the tail's blend (D-30, D-32): where it begins and where the rail is the centre's.
     for (const s of [hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length)]) {
+      if (inside(s)) required.push(s);
+    }
+  }
+  if (railCharacterDifferences(rails, "nose").length > 0) {
+    // Both ends of the nose's blend (quick 261127-kkw): where the nose's rail is full and where it is the centre's.
+    const { fullFrom, goneAt } = noseBlendStations(rails, length, anchors[2].station, anchors[3].station);
+    for (const s of [goneAt, fullFrom]) {
       if (inside(s)) required.push(s);
     }
   }

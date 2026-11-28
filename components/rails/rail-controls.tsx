@@ -13,6 +13,8 @@ import {
   railFamilyLabel,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
+  noseBlendsFrom,
+  noseEndsAt,
   railNudgesOf,
   type RailBandSpec,
   type RailFamily,
@@ -57,6 +59,9 @@ interface RailControlsProps {
   /** The tail's Tail Rail Blends From and Ends At sliders (Phase 16, D-20/D-30/D-32), in millimetres from the tail. */
   onChangeHardEdgeBlendsFrom: (value: Mm) => void;
   onChangeHardEdgeEndsAt: (value: Mm) => void;
+  /** The nose's Nose Rail Blends From and Ends At sliders (quick 261127-kkw), in millimetres from the nose. */
+  onChangeNoseRailBlendsFrom: (value: Mm) => void;
+  onChangeNoseRailEndsAt: (value: Mm) => void;
   /** One mark's nudge off its formula (quick 261102-gec plan 02, PC19) — its own undo step per mark. */
   onChangeNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20) — one undo step. */
@@ -76,9 +81,14 @@ interface RailControlsProps {
    * are hidden below the shell breakpoint and untouched at or above it; left out (DATA,
    * INSTRUCTIONS), all three show. */
   phoneSection?: RailSectionKey;
-  /** The board's length, which the tail's hard-edge settings run against (to its centre, D-30). */
+  /** The board's length, which each tip rail's two blend settings run against (to its centre, D-30). */
   boardLength: Mm;
 }
+
+/** The one note over a tip rail's two blend rows (the founder, 2026-11-06), the tail's and the nose's alike:
+ * nothing on RAILS shows what they do, and the 3D page draws the same sliders over the same values. */
+const BLEND_ROWS_NOTE =
+  "These controls are invisible here and corresponding controls with visual verification are found on the 3D page.";
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
@@ -167,10 +177,16 @@ interface RailSectionControlsProps {
    * 18" and 30" before). */
   tailHardEdgeBlendsFrom?: Mm;
   tailHardEdgeEndsAt?: Mm;
-  /** The board's length: the tail rail's two settings' windows run to its centre (D-30). */
+  /** The nose's stored Nose Rail Blends From and Ends At (quick 261127-kkw), in millimetres from the nose; absent
+   * shows 12" and the top of Ends At's slider through `noseBlendsFrom` / `noseEndsAt`. */
+  noseRailBlendsFrom?: Mm;
+  noseRailEndsAt?: Mm;
+  /** The board's length: each tip rail's two settings' windows run to its centre (D-30). */
   boardLength: Mm;
   onChangeHardEdgeBlendsFrom?: (value: Mm) => void;
   onChangeHardEdgeEndsAt?: (value: Mm) => void;
+  onChangeNoseRailBlendsFrom?: (value: Mm) => void;
+  onChangeNoseRailEndsAt?: (value: Mm) => void;
   /** While imported (D-09/D-10), the thickness slider is HIDDEN, not greyed (quick 261017-vdh): the
    * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs card
    * instead. Every other control on the section is untouched. */
@@ -199,9 +215,13 @@ function RailSectionControls({
   onToggleHardEdge,
   tailHardEdgeBlendsFrom,
   tailHardEdgeEndsAt,
+  noseRailBlendsFrom,
+  noseRailEndsAt,
   boardLength,
   onChangeHardEdgeBlendsFrom,
   onChangeHardEdgeEndsAt,
+  onChangeNoseRailBlendsFrom,
+  onChangeNoseRailEndsAt,
   thicknessImported,
   system,
   hiddenOnPhone,
@@ -209,6 +229,7 @@ function RailSectionControls({
 }: RailSectionControlsProps) {
   const locked = useControlsLocked();
   const isTail = sectionKey === "tail";
+  const isNose = sectionKey === "nose";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
   // Inches-domain thickness stays around for the Deck Profile step — the step formula is a model-side
   // snap (`deckProfileSliderStep`, tested in rail-bands.test.ts) and never becomes system-aware.
@@ -265,53 +286,84 @@ function RailSectionControls({
   const showTucks = !isTail || !hardEdgeOn;
   const showBottomTuck1 = showTucks && !spec.singleTuck;
 
-  /** The tail rail's two rows (Phase 16, D-20 the founder 2026-11-03, D-30 2026-11-04, D-32 2026-11-04; UI-SPEC
-   * §17), in this order: Tail Rail Blends From — the tail's rail as set is full up to here (12" to 30") — then
-   * Tail Rail Ends At — the rail has fully blended into the centre's rail as set by here (2" past Blends From, up
-   * to the board's centre). Since D-32 they bound the tail's WHOLE rail character — Hard Edge, Family,
-   * Symmetrical, Single Tuck and Sharp Bottom Tuck — so they always show on the tail, Hard Edge on or off; the
-   * nose's blend is automatic and has no row (the founder: "Only the tail rail gets the users blend. The nose is
-   * a default that always gets applied."). Each slider's range follows the other and the board's length, so the
-   * two can never be set within 2" of each other; 1/2" steps, whole centimetres in Metric, stored as whole
-   * millimetres (in the fields still named for the hard edge, because saved boards carry them). Both distances
-   * are dims, each read through its one named formatter. No hint and no note on the litres: nothing on screen says
-   * they moved (D-18). The 3D page draws the same two sliders over these same two values, and the caption above them
-   * says so, because nothing on this page shows what they do (the founder, 2026-11-06). */
-  const tailRailRows = () => {
-    const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
-    const blendsFrom = hardEdgeBlendsFrom(settings, boardLength);
-    const endsAt = hardEdgeEndsAt(settings, boardLength);
+  /** A tip rail's two blend rows under their note — the tail's (Phase 16, D-20 the founder 2026-11-03, D-30
+   * 2026-11-04, D-32 2026-11-04; UI-SPEC §17) and, since quick 261127-kkw, the nose's — in this order: Blends From,
+   * the tip's rail as set is full from the tip to here (12" to 30"), then Ends At, the rail has fully blended into
+   * the centre's rail as set by here (2" past Blends From, up to the board's centre). Each is measured from its own
+   * tip. Since D-32 a pair bounds its tip's WHOLE rail character — Hard Edge, Family, Symmetrical, Single Tuck and
+   * Sharp Bottom Tuck — so the rows always show, on a tip whose rail is the centre's too. The nose had no rows
+   * until the founder asked for them on 2026-11-27 ("I think we need to add a center to nose rail blend control
+   * like we did for the tail"), reversing his D-32 "Only the tail rail gets the users blend. The nose is a default
+   * that always gets applied." Each slider's range follows the other and the board's length, so the two can never
+   * be set within 2" of each other; 1/2" steps, whole centimetres in Metric, stored as whole millimetres. Both
+   * distances are dims, each read through its one named formatter. No hint and no note on the litres: nothing on
+   * screen says they moved (D-18). The 3D page draws the same sliders over these same values, and the note above
+   * them says so, because nothing on this page shows what they do (the founder, 2026-11-06). */
+  const blendRows = (tip: {
+    title: string;
+    spokenTip: string;
+    blendsFrom: Mm;
+    endsAt: Mm;
+    onChangeBlendsFrom?: (value: Mm) => void;
+    onChangeEndsAt?: (value: Mm) => void;
+  }) => {
+    const { blendsFrom, endsAt } = tip;
     const fromSlider = hardEdgeBlendsFromSlider(blendsFrom, endsAt, boardLength, system);
     const endsSlider = hardEdgeEndsAtSlider(endsAt, blendsFrom, boardLength, system);
     const fromText = formatHardEdgeBlendsFrom(blendsFrom, system);
     const endsText = formatHardEdgeEndsAt(endsAt, system);
     return (
       <>
-        <div className="text-xs text-surf-ink-muted font-normal">
-          These controls are invisible here and corresponding controls with visual verification are found on the 3D page.
-        </div>
+        <div className="text-xs text-surf-ink-muted font-normal">{BLEND_ROWS_NOTE}</div>
         <SliderRow
-          label={`Tail Rail Blends From — ${fromText}`}
+          label={`${tip.title} Blends From — ${fromText}`}
           value={fromSlider.value}
           min={fromSlider.min}
           max={fromSlider.max}
           step={fromSlider.step}
-          onValueChange={(v) => onChangeHardEdgeBlendsFrom?.(fromSlider.toMm(v))}
-          sliderLabel="Tail Rail blends from"
-          sliderValueText={`${fromText} from the tail`}
+          onValueChange={(v) => tip.onChangeBlendsFrom?.(fromSlider.toMm(v))}
+          sliderLabel={`${tip.title} blends from`}
+          sliderValueText={`${fromText} from the ${tip.spokenTip}`}
         />
         <SliderRow
-          label={`Tail Rail Ends At — ${endsText}`}
+          label={`${tip.title} Ends At — ${endsText}`}
           value={endsSlider.value}
           min={endsSlider.min}
           max={endsSlider.max}
           step={endsSlider.step}
-          onValueChange={(v) => onChangeHardEdgeEndsAt?.(endsSlider.toMm(v))}
-          sliderLabel="Tail Rail ends at"
-          sliderValueText={`${endsText} from the tail`}
+          onValueChange={(v) => tip.onChangeEndsAt?.(endsSlider.toMm(v))}
+          sliderLabel={`${tip.title} ends at`}
+          sliderValueText={`${endsText} from the ${tip.spokenTip}`}
         />
       </>
     );
+  };
+
+  /** The tail's pair, in the fields still named for the hard edge because saved boards carry them. */
+  const tailRailRows = () => {
+    const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
+    return blendRows({
+      title: SECTION_TITLE.tail,
+      spokenTip: "tail",
+      blendsFrom: hardEdgeBlendsFrom(settings, boardLength),
+      endsAt: hardEdgeEndsAt(settings, boardLength),
+      onChangeBlendsFrom: onChangeHardEdgeBlendsFrom,
+      onChangeEndsAt: onChangeHardEdgeEndsAt,
+    });
+  };
+
+  /** The nose's pair (quick 261127-kkw): the figures the sliders show, 12" and the top of Ends At's slider on a
+   * board that has never moved them. */
+  const noseRailRows = () => {
+    const settings = { noseRailBlendsFrom, noseRailEndsAt };
+    return blendRows({
+      title: SECTION_TITLE.nose,
+      spokenTip: "nose",
+      blendsFrom: noseBlendsFrom(settings, boardLength),
+      endsAt: noseEndsAt(settings, boardLength),
+      onChangeBlendsFrom: onChangeNoseRailBlendsFrom,
+      onChangeEndsAt: onChangeNoseRailEndsAt,
+    });
   };
 
   // The group's controls, built once so the two places that may draw them (below) never drift.
@@ -437,8 +489,9 @@ function RailSectionControls({
                 "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
                 just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22) — the tuck rows hidden on a
                 hard-edged tail; on the tail, always, Tail Rail Blends From and Tail Rail Ends At (Phase 16, D-20/D-30/D-32)
-                last before Reset; Reset. The nose and the centre have no blend rows: the nose's blend into the centre is
-                automatic. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                last before Reset, and on the nose, always, Nose Rail Blends From and Nose Rail Ends At in the same place
+                (quick 261127-kkw, the founder 2026-11-27, reversing D-32's "the nose is a default"); Reset. The centre has
+                no blend rows: each tip's rail blends into it. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
                 "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
@@ -510,13 +563,17 @@ function RailSectionControls({
 
             {/* Tail Rail Blends From then Tail Rail Ends At (Phase 16, D-20/D-30/D-32): the tail's last two sliders,
                 always — Hard Edge on or off, they bound the tail's whole rail — directly above Reset, so with Hard Edge
-                off they follow Sharp Bottom Tuck (UI-SPEC §17). Never on the nose or the centre. */}
+                off they follow Sharp Bottom Tuck (UI-SPEC §17). The nose's own two sit in the same place on the Nose
+                Rail card (quick 261127-kkw; D-32 had the nose with no rows until the founder asked for them on
+                2026-11-27). Never on the centre. */}
             {isTail && tailRailRows()}
+            {isNose && noseRailRows()}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
                 Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At back to 12"
-                and the board's centre, the top of Ends At's slider (Phase 16; the new default since quick 261113-psx) — one store
-                action, so one undo step. */}
+                and the board's centre, the top of Ends At's slider (Phase 16; the new default since quick 261113-psx); on the
+                nose, Nose Rail Blends From and Ends At back the same way (quick 261127-kkw) — one store action, so one undo
+                step. */}
             <button
               type="button"
               disabled={locked}
@@ -584,6 +641,8 @@ export function RailControls({
   onToggleHardEdge,
   onChangeHardEdgeBlendsFrom,
   onChangeHardEdgeEndsAt,
+  onChangeNoseRailBlendsFrom,
+  onChangeNoseRailEndsAt,
   onChangeNudge,
   onResetAdvanced,
   sectionOpen,
@@ -651,6 +710,10 @@ export function RailControls({
         onToggleOpen={() => onToggleSectionOpen("nose")}
         advancedOpen={advancedOpen.nose}
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
+        noseRailBlendsFrom={spec.noseRailBlendsFrom}
+        noseRailEndsAt={spec.noseRailEndsAt}
+        onChangeNoseRailBlendsFrom={onChangeNoseRailBlendsFrom}
+        onChangeNoseRailEndsAt={onChangeNoseRailEndsAt}
         thicknessImported={railsImportFoilThickness}
         system={system}
         boardLength={boardLength}

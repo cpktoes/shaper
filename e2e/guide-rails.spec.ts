@@ -19,7 +19,7 @@ import {
 } from "./helpers/guide";
 
 /**
- * RAILS' GUIDE tab (Phase 18, plan 18-05): VIEWER · DATA · INSTRUCTIONS · GUIDE, and seventeen cards about the
+ * RAILS' GUIDE tab (Phase 18, plan 18-05): VIEWER · DATA · INSTRUCTIONS · GUIDE, and eighteen cards about the
  * page's controls, each drawn from the rails of the board that is open — the bands in the page's own colours,
  * the finished rail in ink, the one setting pushed in muted dashes.
  *
@@ -45,7 +45,7 @@ test.describe("RAILS' GUIDE on a computer (18-05)", () => {
     await forgetOpenBoardOnEveryLoad(page);
   });
 
-  test("the strip ends in GUIDE, and GUIDE opens seventeen cards in three groups with the Shortboard's own tags and captions", async ({
+  test("the strip ends in GUIDE, and GUIDE opens eighteen cards in three groups with the Shortboard's own tags and captions", async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -112,6 +112,8 @@ test.describe("RAILS' GUIDE on a computer (18-05)", () => {
       await expect(guideCard(page, id).locator("[data-guide-caption]")).toHaveText(/^dashed · [+-]\d+ mm$/);
     }
     await expect(guideCard(page, RAILS_GUIDE_CARD_IDS.blends).locator("[data-guide-tag]")).toHaveText(/^\d+\.\d cm · \d+\.\d cm$/);
+    // The nose's own blend card (quick 261127-kkw) reads the same way: two centimetre figures.
+    await expect(guideCard(page, RAILS_GUIDE_CARD_IDS.noseBlends).locator("[data-guide-tag]")).toHaveText(/^\d+\.\d cm · \d+\.\d cm$/);
     // No inch or foot figure anywhere in the GUIDE: no name, tag, caption or drawing label, and no sentence —
     // the two prose lines that quote the 12" stations (Import Rocker & Foil Values' is, Board Thickness' how)
     // read their Metric sayings (plan 18-07). The words as seen, and each part's own words, case kept.

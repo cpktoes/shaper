@@ -540,13 +540,26 @@ interface DesignContextValue {
    * opens: a board without it reads the top of Ends At's slider, the
    * board's centre (`hardEdgeEndsAt`; D-30's L/6 + 18" until quick 261113-psx). */
   setTailHardEdgeEndsAt: (value: Mm) => void;
+  /** Sets where the nose's rail starts blending into the centre's, in millimetres from the NOSE tip (quick
+   * 261127-kkw, the founder 2026-11-27) — the Nose Rail Blends From slider on RAILS and on the 3D page, one value
+   * on both. One drag is one undo step. Nothing on a locked board. Never written when a board opens: a board
+   * without it reads the nose's rail full from the nose 12" station, as every board did before
+   * (`noseBlendsFrom` shows 12"). */
+  setNoseRailBlendsFrom: (value: Mm) => void;
+  /** Sets where the nose's rail has fully become the centre's, in millimetres from the NOSE tip (quick
+   * 261127-kkw) — the Nose Rail Ends At slider. One drag is one undo step. Nothing on a locked board. Never
+   * written when a board opens: a board without it ends the blend at the board's true centre, as every board did
+   * before, and the slider shows its top (`noseEndsAt`). */
+  setNoseRailEndsAt: (value: Mm) => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
    * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At
    * back to the 12" station and the board's centre (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` still deleted, Phase 16
-   * D-20/D-30; the defaults moved with quick 261113-psx, the founder 2026-11-13) — one undo step. */
+   * D-20/D-30; the defaults moved with quick 261113-psx, the founder 2026-11-13). On the nose, Nose Rail Blends From
+   * and Ends At go back the same way (`noseRailBlendsFrom` and `noseRailEndsAt` deleted, quick 261127-kkw). Each
+   * card's Reset puts back its own pair and leaves the other card's alone — one undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
@@ -1102,6 +1115,33 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // The nose's two blend settings (quick 261127-kkw, the founder 2026-11-27: "I think we need to add a center to
+  // nose rail blend control like we did for the tail"): Nose Rail Blends From and Nose Rail Ends At, in millimetres
+  // from the nose tip. The tail's two setters' twins: each has its own noteEdit key, so one drag is one undo step;
+  // only these sliders write them, and only the Nose Rail card's Reset Advanced Settings deletes them. RAILS and the
+  // 3D page read and write these same two values.
+  const setNoseRailBlendsFrom = (value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit("rails:nose:railBlendsFrom");
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: { ...prev.rails, noseRailBlendsFrom: value },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  const setNoseRailEndsAt = (value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit("rails:nose:railEndsAt");
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: { ...prev.rails, noseRailEndsAt: value },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
   // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
   // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
@@ -1128,19 +1168,25 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
   // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
   // rule) and Tail Rail Blends From and Ends At back to 12" and the board's centre by deleting `tailHardEdgeBlendsFrom` and
-  // `tailHardEdgeEndsAt` (Phase 16, D-20/D-30: a board without them reads the defaults) — all in one setState,
-  // so it is ONE undo step. A discrete action like
+  // `tailHardEdgeEndsAt` (Phase 16, D-20/D-30: a board without them reads the defaults); on the nose, Nose Rail
+  // Blends From and Ends At back the same way, by deleting `noseRailBlendsFrom` and `noseRailEndsAt` (quick
+  // 261127-kkw) — all in one setState, so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).
   const resetRailAdvanced = (key: RailSectionKey) => {
     if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => {
-      // On the tail the rails are rebuilt without both keys (destructured out, never set to undefined);
-      // the nose's and centre's Reset keep the rails exactly as they were.
+      // On the tail the rails are rebuilt without the tail's two keys, on the nose without the nose's two
+      // (destructured out, never set to undefined); neither card's Reset touches the other card's pair, and the
+      // centre's Reset keeps the rails exactly as they were.
       const { tailHardEdgeBlendsFrom: _from, tailHardEdgeEndsAt: _endsAt, ...railsWithoutBlend } = prev.rails;
       void _from;
       void _endsAt;
-      const baseRails: RailBandSpec = key === "tail" ? railsWithoutBlend : prev.rails;
+      const { noseRailBlendsFrom: _noseFrom, noseRailEndsAt: _noseEndsAt, ...railsWithoutNoseBlend } = prev.rails;
+      void _noseFrom;
+      void _noseEndsAt;
+      const baseRails: RailBandSpec =
+        key === "tail" ? railsWithoutBlend : key === "nose" ? railsWithoutNoseBlend : prev.rails;
       return {
         ...startedFrom(prev, liveTipsRef.current),
         rails: {
@@ -2236,6 +2282,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,
+    setNoseRailBlendsFrom,
+    setNoseRailEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     updateFins,

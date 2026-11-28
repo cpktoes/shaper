@@ -45,9 +45,11 @@ export const THREE_D_COPY = {
   lookSpoken: (deg: number) =>
     deg === 0 ? "On the stringer's line." : `${Math.abs(deg)} degrees to the ${deg < 0 ? "left" : "right"} of the stringer's line.`,
 
-  /** The tail rail's blend (D-30, D-32): the same two settings as RAILS' tail Advanced menu, the same words and
-   * spoken names, so one control has one name wherever it is. They bound the tail's whole rail, so they are always
-   * live; the nose's blend is automatic and has no control. */
+  /** Each tip rail's blend (the tail's: D-30, D-32; the nose's: quick 261127-kkw): the same two settings as that
+   * rail's Advanced menu on RAILS, the same words and spoken names, so one control has one name wherever it is. A
+   * pair bounds its tip's whole rail, so the rows are always live. Under D-32 the nose's blend was automatic and had
+   * no control; the founder reversed that on 2026-11-27 ("I think we need to add a center to nose rail blend control
+   * like we did for the tail"), and the nose now has its own two settings, drawn above the tail's. */
   railBlendHeading: "Rail Blend Controls",
   railBlendNote: "These controls affect how you shape the board and corresponding controls are also on the RAILS page.",
   tailRailBlendsFrom: "Tail Rail Blends From",
@@ -55,6 +57,11 @@ export const THREE_D_COPY = {
   tailRailBlendsFromSlider: "Tail Rail blends from",
   tailRailEndsAtSlider: "Tail Rail ends at",
   tailRailFromTheTail: (distance: string) => `${distance} from the tail`,
+  noseRailBlendsFrom: "Nose Rail Blends From",
+  noseRailEndsAt: "Nose Rail Ends At",
+  noseRailBlendsFromSlider: "Nose Rail blends from",
+  noseRailEndsAtSlider: "Nose Rail ends at",
+  noseRailFromTheNose: (distance: string) => `${distance} from the nose`,
   viewHeading: "View",
   viewsGroup: "Views",
   views: { deck: "Deck", bottom: "Bottom", side: "Side", nose: "Nose", tail: "Tail" },

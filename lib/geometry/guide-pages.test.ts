@@ -146,7 +146,9 @@ const PAGES: readonly PageRun[] = [
           continue;
         }
         if (v.kind === "blends") {
-          if (field !== "tailHardEdgeBlends") out.push(id);
+          // A blend pair, measured from its own tip: the tail's card pushes the tail's, the nose's the nose's.
+          if (field !== "tailHardEdgeBlends" && field !== "noseRailBlends") out.push(id);
+          if (RAILS_GUIDE_SECTION[id] !== (field === "noseRailBlends" ? "nose" : "tail")) out.push(`${id} draws the wrong tip`);
           continue;
         }
         const base = b.rails.effectiveRails[v.key];
@@ -408,11 +410,11 @@ for (const page of PAGES) {
 }
 
 describe("the five pages together", () => {
-  it("are the five pages in the app's order, 84 cards, the same count on every board", SLOW, () => {
+  it("are the five pages in the app's order, 85 cards, the same count on every board", SLOW, () => {
     expect(PAGES.map((p) => p.page)).toEqual([...GUIDE_PAGES]);
     for (const system of UNITS_SYSTEMS) {
       for (const board of BOARDS[system]) {
-        expect(PAGES.map((p) => run(p, board, system).size), `${board.label} ${system}`).toEqual([22, 14, 17, 8, 23]);
+        expect(PAGES.map((p) => run(p, board, system).size), `${board.label} ${system}`).toEqual([22, 14, 18, 8, 23]);
       }
     }
   });

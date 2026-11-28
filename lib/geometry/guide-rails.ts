@@ -8,7 +8,9 @@
  * cross-section at that station as VIEWER draws it: the bands in the page's own colours, keyed by their
  * `RailSegmentKey`, the apex centre, the finished rail in ink, and the one setting pushed in muted dashes. Tail
  * Rail Blends From · Ends At draws the tail from above instead, the hard edge running from the tail to Blends
- * From and fading by Ends At.
+ * From and fading by Ends At. Nose Rail Blends From · Ends At (quick 261127-kkw, the eighteenth card) is its twin
+ * and the one card that draws the nose: the nose from above, the nose's rail running from the tip to Blends From
+ * and fading by Ends At.
  *
  * Every pushed section is the board's own section spec with exactly one field changed (or the tail's hard-edge
  * flag), through `computeRailSectionOutput`, then `finishedRail` from the base board's own left edge — the
@@ -59,6 +61,8 @@ import {
   hardEdgeBlendsFromWindow,
   hardEdgeEndsAt,
   hardEdgeEndsAtWindow,
+  noseBlendsFrom,
+  noseEndsAt,
   railFamilyLabel,
   railNudgesOf,
   railPlotDots,
@@ -79,7 +83,7 @@ const INPUTS = "Inputs";
 const RAILS = "Nose Rail · Center Rail · Tail Rail";
 const ADVANCED = "Advanced";
 
-/** RAILS' seventeen cards, in the words page's order. */
+/** RAILS' eighteen cards, in the words page's order. */
 export const RAILS_GUIDE_CARD_IDS = {
   importFoil: guideCardId("rails", INPUTS, "Import Rocker & Foil Values"),
   thickness: guideCardId("rails", INPUTS, 'Board Thickness · Thickness @12"'),
@@ -97,14 +101,15 @@ export const RAILS_GUIDE_CARD_IDS = {
   bottomTuck1: guideCardId("rails", ADVANCED, "Bottom Tuck 1"),
   bottomTuck3: guideCardId("rails", ADVANCED, "Bottom Tuck 3"),
   sharpBottomTuck: guideCardId("rails", ADVANCED, "Sharp Bottom Tuck"),
+  noseBlends: guideCardId("rails", ADVANCED, "Nose Rail Blends From · Nose Rail Ends At"),
   blends: guideCardId("rails", ADVANCED, "Tail Rail Blends From · Tail Rail Ends At"),
 } as const;
 
-/** The seventeen ids in order. */
+/** The eighteen ids in order. */
 export const RAILS_GUIDE_CARD_ORDER: readonly string[] = Object.values(RAILS_GUIDE_CARD_IDS);
 
 /** The one field each pushed card changes: a `RailSectionSpec` field (a nudge as `nudges.<key>`), the tail's
- * hard-edge flag, or the tail rail's blend pair. The Import card pushes nothing. */
+ * hard-edge flag, or a tip rail's blend pair (the tail's, or the nose's). The Import card pushes nothing. */
 export type RailsGuidePushField =
   | "boardThickness"
   | "deckPercent"
@@ -116,7 +121,8 @@ export type RailsGuidePushField =
   | "scaleFromCenter"
   | `nudges.${RailNudgeKey}`
   | "tailHardEdge"
-  | "tailHardEdgeBlends";
+  | "tailHardEdgeBlends"
+  | "noseRailBlends";
 
 const ids = RAILS_GUIDE_CARD_IDS;
 
@@ -136,18 +142,23 @@ export const RAILS_GUIDE_PUSH_FIELDS: Readonly<Record<string, RailsGuidePushFiel
   [ids.bottomTuck1]: "nudges.bottomTuck1",
   [ids.bottomTuck3]: "nudges.bottomTuck3",
   [ids.sharpBottomTuck]: "sharpBottomTuck",
+  [ids.noseBlends]: "noseRailBlends",
   [ids.blends]: "tailHardEdgeBlends",
 };
 
-/** Which rail each card draws (D-04): the centre's, the tail's for the controls only the tail has. */
+/** Which rail each card draws (D-04): the centre's, the tail's for the controls only the tail has, and the nose's
+ * for the nose's own blend. */
 export const RAILS_GUIDE_SECTION: Readonly<Record<string, RailSectionKey>> = Object.fromEntries(
-  RAILS_GUIDE_CARD_ORDER.map((id) => [id, id === ids.hardEdge || id === ids.scaled || id === ids.blends ? "tail" : "center"]),
+  RAILS_GUIDE_CARD_ORDER.map((id) => [
+    id,
+    id === ids.noseBlends ? "nose" : id === ids.hardEdge || id === ids.scaled || id === ids.blends ? "tail" : "center",
+  ]),
 );
 
 /** What RAILS' GUIDE reads from the design store — the store's own objects, read only. */
 export interface RailsGuideInput {
   /** The rails RAILS draws (thicknesses from the foil while Import Rocker & Foil Values is ticked), with the
-   * tail's Hard Edge flag and its two blend settings. */
+   * tail's Hard Edge flag and each tip rail's two blend settings. */
   effectiveRails: RailBandSpec;
   /** `computeRailBands(effectiveRails)`, as VIEWER draws it. */
   railBands: RailBandsOutput;
@@ -161,7 +172,8 @@ export interface RailsGuideInput {
   domeNudgeTop: Record<RailSectionKey, number>;
 }
 
-/** A pushed card's board: one section with one field changed (or the tail's flag), or the blend pair moved. */
+/** A pushed card's board: one section with one field changed (or the tail's flag), or a blend pair moved — each
+ * pair measured from its own tip. */
 export type RailsGuideVariant =
   | { kind: "section"; key: RailSectionKey; spec: RailSectionSpec; hardEdge: boolean }
   | { kind: "blends"; blendsFrom: Mm; endsAt: Mm };
@@ -205,15 +217,13 @@ export function railsGuideDomeTop(input: RailsGuideInput, key: RailSectionKey, s
 }
 
 /**
- * The blend pair pushed, within RAILS' own slider windows: the pair together toward the centre, else the other way;
+ * A blend pair pushed, within RAILS' own slider windows — the tail's pair or the nose's, each measured from its own
+ * tip, since the windows are the same from either: the pair together toward the centre, else the other way;
  * and, since quick 261113-psx, when the pair cannot move together — a board that says nothing sits with Blends From at
- * the bottom of its slider and Ends At at the top of its own — Blends From alone toward the centre (a longer hard
- * edge), else Ends At alone toward the tail; `null` with no room any of those ways.
+ * the bottom of its slider and Ends At at the top of its own — Blends From alone toward the centre (a longer tip
+ * rail), else Ends At alone toward the tip; `null` with no room any of those ways.
  */
-function blendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: Mm; endsAt: Mm } | null {
-  const L = input.boardLength;
-  const from = hardEdgeBlendsFrom(input.effectiveRails, L);
-  const ends = hardEdgeEndsAt(input.effectiveRails, L);
+function pairPush(from: Mm, ends: Mm, L: Mm, system: UnitsSystem): { blendsFrom: Mm; endsAt: Mm } | null {
   const amount = guidePush(system).rails.blends;
   const e = 0.01;
   for (const sign of [1, -1]) {
@@ -230,6 +240,18 @@ function blendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: 
   const endWindow = hardEdgeEndsAtWindow(from, L);
   if (endAlone >= endWindow.min - e && endAlone <= endWindow.max + e) return { blendsFrom: from, endsAt: endAlone };
   return null;
+}
+
+/** The tail's pair pushed, read as RAILS' tail sliders read it. */
+function blendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: Mm; endsAt: Mm } | null {
+  const L = input.boardLength;
+  return pairPush(hardEdgeBlendsFrom(input.effectiveRails, L), hardEdgeEndsAt(input.effectiveRails, L), L, system);
+}
+
+/** The nose's pair pushed (quick 261127-kkw), read as RAILS' nose sliders show it. */
+function noseBlendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: Mm; endsAt: Mm } | null {
+  const L = input.boardLength;
+  return pairPush(noseBlendsFrom(input.effectiveRails, L), noseEndsAt(input.effectiveRails, L), L, system);
 }
 
 /** The Deck Profile pushed to the push's 85%, or back to Flat on a board already domed there. */
@@ -292,6 +314,8 @@ export function railsGuideVariants(input: RailsGuideInput, system: UnitsSystem):
   out[ids.bottomTuck1] = nudged(ids.bottomTuck1, "bottomTuck1", push.tuck1);
   out[ids.bottomTuck3] = nudged(ids.bottomTuck3, "bottomTuck3", push.tuck3);
   out[ids.sharpBottomTuck] = section(ids.sharpBottomTuck, { sharpBottomTuck: !c.sharpBottomTuck });
+  const noseBlends = noseBlendsPush(input, system);
+  out[ids.noseBlends] = noseBlends === null ? null : { kind: "blends", ...noseBlends };
   const blends = blendsPush(input, system);
   out[ids.blends] = blends === null ? null : { kind: "blends", ...blends };
   return out;
@@ -308,7 +332,7 @@ export function railsGuideFinishedRail(input: RailsGuideInput, output: RailSecti
   return finishedRail(output, mm(Math.min(railsGuideX0(input), output.bounds.xAxisMin)));
 }
 
-/** Strip, section and plan heights (UI-SPEC §4: RAILS strip 60, a section 120, the tail from above 110). */
+/** Strip, section and plan heights (UI-SPEC §4: RAILS strip 60, a section 120, a tip from above 110). */
 const STRIP_H = 60;
 const SECTION_H = 120;
 const PLAN_H = 110;
@@ -321,7 +345,8 @@ const TOP_DIM_BAND = GUIDE_TEXT_UNITS_MAX + 1 + GUIDE_HDIM_LABEL_OFF;
 const BOTTOM_DIM_BAND = 4 + GUIDE_HDIM_LABEL_OFF + 1.1 * GUIDE_TEXT_UNITS_MAX + 1;
 /** The room kept right of the rail for a vertical dimension's label. */
 const LABEL_GUTTER = 84;
-/** How far inside the rail's line the tail's hard edge is drawn on the plan, in drawing units. */
+/** How far inside the rail's line a tip's own rail (the tail's hard edge, the nose's rail) is drawn on the plan, in
+ * drawing units. */
 const EDGE_INSET = 2.5;
 
 /** The three stations a rail is cut at: the tail 12", the centre, the nose 12". */
@@ -585,6 +610,87 @@ function blendsFigure(input: RailsGuideInput, pushedPair: { blendsFrom: Mm; ends
   return { height: STRIP_H + 6 + PLAN_H, strip: stripLines, windows: [{ box, prims }] };
 }
 
+/**
+ * Nose Rail Blends From · Ends At (quick 261127-kkw): the tail's card mirrored. The strip with the nose station cut
+ * and the window over the nose end, then the nose from above, one rail from the stringer out — the nose's rail drawn
+ * just inside the outline, in ink from the tip to Blends From and faint dashes from there to Ends At, where it has
+ * become the centre's; both marks across the rail, and the pushed pair in muted dashes. The rail line is always
+ * drawn: a nose always has a rail, where a tail does not always have a hard edge. Both settings are distances from
+ * the nose tip; the drawing places them at `length − distance` from the tail.
+ */
+function noseBlendsFigure(input: RailsGuideInput, pushedPair: { blendsFrom: Mm; endsAt: Mm } | null, system: UnitsSystem): GuideFigure {
+  const g = input.outlineGeometry;
+  const L = input.boardLength;
+  const frame = GUIDE_FRAME.rails;
+  const from = noseBlendsFrom(input.effectiveRails, L);
+  const ends = noseEndsAt(input.effectiveRails, L);
+  /** A distance from the nose tip as a station from the tail, the drawing's own measure. */
+  const at = (fromNose: number) => g.length - fromNose;
+  const strip = guideStripFit(g.length, mm(2 * g.halfWidePointWidth), STRIP_H);
+  const box = guideDetailBox(STRIP_H, PLAN_H);
+  const farEnd = Math.max(ends, pushedPair?.endsAt ?? 0);
+  const win = {
+    s0: at(farEnd + frame.pastEnds),
+    s1: g.length + frame.margin,
+    across: guideHalfWidthAt(g.points, at(ends + frame.acrossAt)) + frame.tailAcross,
+    half: true,
+  };
+  const bottom = 3 + 1.1 * GUIDE_TEXT_UNITS_MAX + 2;
+  const fitted = guideWindowFit(win, strip, box, { stripHeight: STRIP_H, top: NAME_BAND, bottom });
+  const map = fitted.map;
+  const X = (s: number) => guideX(map, s);
+  const Y = (a: number) => guideY(map, a);
+
+  // One rail, from the window's tail-ward edge along the outline to the nose tip, back along the stringer.
+  const pts = [
+    { s: win.s0, w: guideHalfWidthAt(g.points, win.s0) },
+    ...g.points.filter((p) => p.station > win.s0).map((p) => ({ s: p.station, w: p.halfWidth })),
+  ];
+  const tip = pts[pts.length - 1].s;
+  const prims: GuidePrim[] = [];
+  if (pts.length > 1) {
+    const rail = pts.map((p, i) => `${i ? "L" : "M"}${f1(X(p.s))} ${f1(Y(p.w))}`).join("");
+    prims.push({ kind: "path", role: "board", d: `${rail}L${f1(X(tip))} ${f1(Y(0))}L${f1(X(win.s0))} ${f1(Y(0))}Z` });
+  }
+  prims.push({ kind: "line", role: "stringer", x1: f1(X(win.s0)), y1: f1(Y(0)), x2: f1(X(tip)) - 4, y2: f1(Y(0)) });
+  // The nose's rail, as set from the tip to Blends From, then fading into the centre's by Ends At.
+  const along = (s0: number, s1: number) => {
+    const out: { x: number; y: number }[] = [];
+    for (const p of g.points) if (p.station >= s0 && p.station <= s1) out.push({ x: p.station, y: guideHalfWidthAt(g.points, p.station) });
+    out.unshift({ x: s0, y: guideHalfWidthAt(g.points, s0) });
+    out.push({ x: s1, y: guideHalfWidthAt(g.points, s1) });
+    // Drawn just inside the rail's own line, so it reads as its own line beside the outline.
+    return out.map((p, i) => `${i ? "L" : "M"}${f1(X(p.x))} ${f1(Y(p.y) + EDGE_INSET)}`).join("");
+  };
+  prims.push({ kind: "path", role: "rail", d: along(at(from), tip) });
+  prims.push({ kind: "path", role: "thinning", d: along(at(ends), at(from)) });
+  const across = (fromNose: number, role: "mark" | "push"): GuidePrim => ({
+    kind: "line",
+    role,
+    x1: f1(X(at(fromNose))),
+    y1: f1(Y(0)),
+    x2: f1(X(at(fromNose))),
+    y2: f1(Y(guideHalfWidthAt(g.points, at(fromNose))) - 4),
+  });
+  prims.push(across(from, "mark"), across(ends, "mark"));
+  if (pushedPair) prims.push(across(pushedPair.blendsFrom, "push"), across(pushedPair.endsAt, "push"));
+  // Each mark's figure under the stringer, Blends From toward the nose and Ends At toward the tail, so the two run
+  // away from each other and never meet. The nose is at the left of the window, so these are the tail card's two
+  // clamps mirrored: Blends From's figure ends at its mark and is held inside the window's nose edge; Ends At's
+  // starts at its mark and is held inside the window's tail-ward edge, each at the narrowest card's text size.
+  const labelY = f1(Y(0) + 3);
+  const startLabel = (x: number): GuidePrim => ({ kind: "text", role: "value", x: f1(x), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(from, system))], anchor: "end" });
+  const startWidth = guideTextBox(startLabel(0), GUIDE_MIN_FIT)?.w ?? 0;
+  prims.push(startLabel(Math.max(X(at(from)) - 3, box.x + 2 + startWidth)));
+  const endsLabel = (x: number): GuidePrim => ({ kind: "text", role: "value", x: f1(x), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(ends, system))], anchor: "start" });
+  const endsWidth = guideTextBox(endsLabel(0), GUIDE_MIN_FIT)?.w ?? 0;
+  prims.push(endsLabel(Math.min(X(at(ends)) + 3, box.x + box.w - 2 - endsWidth)));
+  prims.push(guideWindowName(box, [guideText("Nose, from above")]));
+
+  const stripLines: GuidePrim[] = [...stripPrims(input, "nose", strip), { kind: "rect", role: "window", ...fitted.rect }];
+  return { height: STRIP_H + 6 + PLAN_H, strip: stripLines, windows: [{ box, prims }] };
+}
+
 const onTag = (on: boolean): GuideTag => (on ? { kind: "on", text: "On this board" } : GUIDE_NO_TAG);
 const valueTag = (text: string): GuideTag => ({ kind: "value", text });
 const dashed = (parts: readonly GuideTextPart[]): GuideCaption => ({ kind: "dashed", parts });
@@ -596,7 +702,7 @@ export function railsThicknessName(system: UnitsSystem): string {
   return `Board Thickness · Thickness @${system === "imperial" ? "" : " "}${stationLabel(system)}`;
 }
 
-/** RAILS' seventeen cards for the open board, in the words page's order. */
+/** RAILS' eighteen cards for the open board, in the words page's order. */
 export function buildRailsGuide(input: RailsGuideInput, system: UnitsSystem): GuidePageBuild {
   const rails = input.effectiveRails;
   const c = rails.center;
@@ -637,6 +743,9 @@ export function buildRailsGuide(input: RailsGuideInput, system: UnitsSystem): Gu
   const from = hardEdgeBlendsFrom(rails, input.boardLength);
   const ends = hardEdgeEndsAt(rails, input.boardLength);
   const blends = variants[ids.blends];
+  const noseFrom = noseBlendsFrom(rails, input.boardLength);
+  const noseEnds = noseEndsAt(rails, input.boardLength);
+  const noseBlends = variants[ids.noseBlends];
 
   const cards: GuideCardModel[] = [
     { id: ids.importFoil, tag: onTag(input.railsImportFoilThickness), caption: GUIDE_NO_CAPTION, figure: figure(ids.importFoil) },
@@ -706,6 +815,15 @@ export function buildRailsGuide(input: RailsGuideInput, system: UnitsSystem): Gu
       tag: onTag(c.sharpBottomTuck),
       caption: caption(ids.sharpBottomTuck, () => [guideText(c.sharpBottomTuck ? "rounded" : "sharp")]),
       figure: figure(ids.sharpBottomTuck),
+    },
+    {
+      id: ids.noseBlends,
+      tag: valueTag(`${formatDim(noseFrom, system)} · ${formatDim(noseEnds, system)}`),
+      caption:
+        noseBlends && noseBlends.kind === "blends"
+          ? dashed([guideFigure(formatDim(noseBlends.blendsFrom, system)), guideText(" · "), guideFigure(formatDim(noseBlends.endsAt, system))])
+          : GUIDE_NO_CAPTION,
+      figure: noseBlendsFigure(input, noseBlends && noseBlends.kind === "blends" ? noseBlends : null, system),
     },
     {
       id: ids.blends,

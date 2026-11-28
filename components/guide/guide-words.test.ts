@@ -7,25 +7,25 @@ import { readGuideWordsPage } from "./words/read-words-page";
 
 /**
  * All five GUIDEs' words together (Phase 18, R13): the aggregate is the founder's words page, page by page
- * in the app's order and card by card in the page's, and every one of the 84 cards reads clean in Metric.
+ * in the app's order and card by card in the page's, and every one of the 85 cards reads clean in Metric.
  * Each page's own words test already holds its module to its section line for line; this one proves the
  * five laid side by side are the whole page, in order, with nothing missing, doubled or out of place.
  */
 
 const page = readGuideWordsPage();
 
-describe("GUIDE_WORDS — the 84 cards in the founder's order", () => {
-  it("is the five pages in the app's order: 22, 14, 17, 8 and 23 cards, 84 in all", () => {
+describe("GUIDE_WORDS — the 85 cards in the founder's order", () => {
+  it("is the five pages in the app's order: 22, 14, 18, 8 and 23 cards, 85 in all", () => {
     expect(GUIDE_PAGE_WORDS.map((p) => p.page)).toEqual([...GUIDE_PAGES]);
     expect(GUIDE_PAGES).toEqual(["template", "rocker", "rails", "volume", "fins"]);
-    expect(GUIDE_PAGE_WORDS.map((p) => p.cards.length)).toEqual([22, 14, 17, 8, 23]);
-    expect(GUIDE_WORDS.length).toBe(84);
+    expect(GUIDE_PAGE_WORDS.map((p) => p.cards.length)).toEqual([22, 14, 18, 8, 23]);
+    expect(GUIDE_WORDS.length).toBe(85);
     for (const p of GUIDE_PAGE_WORDS) expect(guidePageWords(p.page)).toBe(p);
   });
 
   it("carries every card's page as the page it sits under, and no id twice", () => {
     for (const p of GUIDE_PAGE_WORDS) for (const card of p.cards) expect(card.page, card.id).toBe(p.page);
-    expect(new Set(GUIDE_WORDS.map((card) => card.id)).size).toBe(84);
+    expect(new Set(GUIDE_WORDS.map((card) => card.id)).size).toBe(85);
     for (const card of GUIDE_WORDS) expect(card.id).toBe(guideCardId(card.page, card.group, card.name));
   });
 
@@ -69,7 +69,7 @@ describe("GUIDE_WORDS in each system", () => {
     });
   });
 
-  it("finds no inch or foot figure in any Metric line of the 84 cards", () => {
+  it("finds no inch or foot figure in any Metric line of the 85 cards", () => {
     for (const card of GUIDE_WORDS) {
       const lines = guideLines(card, "metric");
       for (const field of ["is", "does", "info", "how"] as const) {
